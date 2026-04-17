@@ -3,6 +3,7 @@ services:
     build:
       context: ./src/api
       dockerfile: Dockerfile
+      network: host
     container_name: hackaton-api
     environment:
       APP_ENV: ${APP_ENV:-development}
@@ -15,4 +16,19 @@ services:
       - ./src/api/data:/app/data
       - ./arquivos_adicionais:/app/arquivos_adicionais:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./src/web
+      dockerfile: Dockerfile
+      network: host
+    container_name: hackaton-web
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_PUBLIC_USE_MOCK: ${NEXT_PUBLIC_USE_MOCK:-false}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
     restart: unless-stopped
