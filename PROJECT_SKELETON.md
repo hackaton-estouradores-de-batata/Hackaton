@@ -45,7 +45,7 @@ Plataforma web que recebe um processo (autos + subsídios), aplica uma **políti
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     FRONTEND (Next.js)                  │
+│              FRONTEND (src/web — Next.js)               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
 │  │ /advogado    │  │ /caso/[id]   │  │ /dashboard   │   │
 │  │ (inbox)      │  │ (recomenda.) │  │ (banco)      │   │
@@ -53,7 +53,7 @@ Plataforma web que recebe um processo (autos + subsídios), aplica uma **políti
 └───────────────────────────┬─────────────────────────────┘
                             │ REST/JSON
 ┌───────────────────────────▼─────────────────────────────┐
-│                   BACKEND (FastAPI)                     |
+│               BACKEND (src/api — FastAPI)               │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │ /api/cases        POST (ingestão)                │   │
 │  │ /api/cases/{id}/recommendation   GET             │   │
@@ -71,9 +71,10 @@ Plataforma web que recebe um processo (autos + subsídios), aplica uma **políti
                 ┌───────────┴────────────┐
                 │                        │
          ┌──────▼──────┐         ┌───────▼──────┐
-         │  Postgres   │         │  DuckDB      │
-         │  (casos,    │         │  (60k        │
-         │   outcomes) │         │   sentenças) │
+         │  SQLite/    │         │  DuckDB      │
+         │  Postgres   │         │  (60k        │
+         │  (casos,    │         │   sentenças) │
+         │   outcomes) │         │              │
          └─────────────┘         └──────────────┘
 ```
 
@@ -88,7 +89,7 @@ hackathon-ufmg-2026-grupoN/
 ├── .env.example                 # OPENAI_API_KEY, DATABASE_URL, etc.
 ├── .gitignore
 │
-├── apps/
+├── src/
 │   ├── web/                     # Frontend Next.js
 │   │   ├── app/
 │   │   │   ├── (advogado)/
@@ -108,46 +109,48 @@ hackathon-ufmg-2026-grupoN/
 │   └── api/                     # Backend FastAPI
 │       ├── main.py              # Entrypoint + rotas
 │       ├── pyproject.toml       # uv/poetry
-│       ├── src/
-│       │   ├── routers/
-│       │   │   ├── cases.py
-│       │   │   ├── recommendations.py
-│       │   │   ├── outcomes.py
-│       │   │   └── metrics.py
-│       │   ├── services/
-│       │   │   ├── extractor.py          # PDF → JSON estruturado
-│       │   │   ├── decision_engine.py    # Regra de decisão
-│       │   │   ├── value_estimator.py    # Sugestão de valor
-│       │   │   └── policy.py             # Config da política (YAML)
-│       │   ├── models/
-│       │   │   ├── case.py               # SQLAlchemy
-│       │   │   ├── recommendation.py
-│       │   │   └── outcome.py
-│       │   ├── schemas/                  # Pydantic
-│       │   │   ├── case.py
-│       │   │   └── recommendation.py
-│       │   ├── llm/
-│       │   │   ├── client.py             # Wrapper OpenAI
-│       │   │   └── prompts/
-│       │   │       ├── extract_autos.txt
-│       │   │       ├── extract_subsidios.txt
-│       │   │       └── decide.txt
-│       │   ├── analytics/
-│       │   │   ├── historical.py         # Queries no CSV de 60k
-│       │   │   └── metrics.py
-│       │   └── db.py
+│       ├── routers/
+│       │   ├── cases.py
+│       │   ├── recommendations.py
+│       │   ├── outcomes.py
+│       │   └── metrics.py
+│       ├── services/
+│       │   ├── extractor.py          # PDF → JSON estruturado
+│       │   ├── decision_engine.py    # Regra de decisão
+│       │   ├── value_estimator.py    # Sugestão de valor
+│       │   └── policy.py             # Config da política (YAML)
+│       ├── models/
+│       │   ├── case.py               # SQLAlchemy
+│       │   ├── recommendation.py
+│       │   └── outcome.py
+│       ├── schemas/                  # Pydantic
+│       │   ├── case.py
+│       │   └── recommendation.py
+│       ├── llm/
+│       │   ├── client.py             # Wrapper OpenAI
+│       │   └── prompts/
+│       │       ├── extract_autos.txt
+│       │       ├── extract_subsidios.txt
+│       │       └── decide.txt
+│       ├── analytics/
+│       │   ├── historical.py         # Queries no CSV de 60k
+│       │   └── metrics.py
+│       ├── db.py
 │       └── tests/
 │
 ├── policy/
 │   └── acordos_v1.yaml          # Política versionada (editável sem deploy)
 │
 ├── data/
-│   ├── sample_cases/            # 2 processos exemplo do enunciado
+│   ├── processos_exemplo/       # 2 processos exemplo do enunciado (não versionados)
 │   │   ├── caso_001/
 │   │   │   ├── autos/
 │   │   │   └── subsidios/
 │   │   └── caso_002/
-│   ├── sentencas_60k.csv        # Histórico
+│   │       ├── autos/
+│   │       └── subsidios/
+│   ├── subsidios/               # Base de subsídios dos últimos 12 meses (não versionada)
+│   ├── sentencas_60k.csv        # Histórico de 60k sentenças (não versionado)
 │   └── README.md                # Descrição dos dados
 │
 ├── docs/
@@ -305,9 +308,9 @@ INPUT: caso estruturado
 
 | # | Requisito | Onde é atendido |
 |---|---|---|
-| 1 | **Regra de decisão** | `services/decision_engine.py` + `policy/acordos_v1.yaml` |
-| 2 | **Sugestão de valor** | `services/value_estimator.py` (histórico CSV + regras YAML) |
-| 3 | **Acesso à recomendação** | Frontend `/caso/[id]` — card com decisão, valor, justificativa, botão "aceitar/divergir" |
+| 1 | **Regra de decisão** | `src/api/services/decision_engine.py` + `policy/acordos_v1.yaml` |
+| 2 | **Sugestão de valor** | `src/api/services/value_estimator.py` (histórico CSV + regras YAML) |
+| 3 | **Acesso à recomendação** | Frontend `src/web/app/(advogado)/caso/[id]` — card com decisão, valor, justificativa, botão "aceitar/divergir" |
 | 4 | **Monitoramento de aderência** | Dashboard: % advogados que seguiram recomendação, por escritório/advogado/faixa de valor |
 | 5 | **Monitoramento de efetividade** | Dashboard: economia estimada (EV recomendado vs. realizado), taxa de acordo aceito, custo médio |
 
@@ -337,10 +340,11 @@ POST   /api/policy                       # Upload nova versão (admin)
 **Objetivo: entregar algo funcional em cada sprint. Nunca ficar mais de 2h sem algo rodando.**
 
 ### Sprint 0 — Setup (1h)
-- [ ] Criar repo pelo template
-- [ ] Boilerplate Next.js + FastAPI rodando com hello world
-- [ ] `.env.example` com OPENAI_API_KEY
-- [ ] Deploy inicial (Vercel + Railway) — fica subindo enquanto desenvolve
+- [x] Repo criado pelo template (estrutura `src/`, `data/`, `docs/` já existe)
+- [x] `.env.example` com OPENAI_API_KEY, DATABASE_URL já presente
+- [ ] Inicializar `src/web/` com Next.js 15 + Tailwind + shadcn/ui
+- [ ] Inicializar `src/api/` com FastAPI + pyproject.toml (uv)
+- [ ] Converter `sentencas_60k.xlsx` → `sentencas_60k.csv` (script único: `pandas read_excel → to_csv`)
 
 ### Sprint 1 — Pipeline de extração (3h)
 - [ ] Endpoint `POST /api/cases` aceita PDFs
@@ -392,7 +396,8 @@ POST   /api/policy                       # Upload nova versão (admin)
 | Política em YAML externo | Hardcode em Python | Jurídico precisa iterar sem dev |
 | LLM para extração, regras para decisão | LLM para tudo | Decisão precisa ser auditável/rastreável |
 | DuckDB sobre CSV | Subir tudo pro Postgres | Zero ETL, query rápida no hackathon |
-| SQLite → Postgres | Postgres direto | Setup local mais rápido |
+| SQLite único | SQLite dev + Postgres prod | MVP local — sem Docker, sem credenciais, um arquivo |
+| XLSX → CSV (conversão única) | DuckDB lendo XLSX direto | CSV é mais simples e sem dependência de openpyxl no runtime |
 | Next.js + FastAPI separados | Full-stack Next | Backend Python é melhor para IA + time provavelmente mais confortável |
 | Recharts | D3 custom | Vibe coding friendly |
 
@@ -401,7 +406,7 @@ POST   /api/policy                       # Upload nova versão (admin)
 ## 10. Limitações Conhecidas (para a apresentação)
 
 - Política v1 baseada em heurísticas + histórico agregado; uma v2 poderia usar modelo preditivo treinado caso a caso
-- Extração de PDFs complexos/escaneados pode falhar — OCR não está no MVP
+- PDFs escaneados não são suportados (MVP assume texto selecionável, que é o caso atual)
 - Dashboard assume dados razoavelmente limpos — produção precisaria de data quality checks
 - Não há fluxo de aprovação multi-nível (alçada) implementado — apenas sinalizado
 - Monitoramento de efetividade depende de advogados reportarem outcomes corretamente
@@ -432,4 +437,4 @@ POST   /api/policy                       # Upload nova versão (admin)
 
 ---
 
-**Começar agora:** Sprint 0 → criar o repo pelo template, subir boilerplate, distribuir os 4 frentes entre o time.
+**Começar agora:** Sprint 0 → subir boilerplate, converter XLSX, distribuir frentes entre o time (ver `docs/TEAM.md`).
