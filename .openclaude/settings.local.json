@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(git:*)",
+      "Bash(rg:*)",
+      "Bash(PYTHONPATH=\"C:/Users/Sergio/Documents/GitHub/Hackaton/src/api\" python - <<'PY'\nfrom pathlib import Path\nfrom app.analytics.historical import summarize_mock_file\nroot = Path\\('C:/Users/Sergio/Documents/GitHub/Hackaton/data/processos_exemplo'\\)\nfor name in ['caso_001', 'caso_002']:\n    print\\(name\\)\n    print\\(summarize_mock_file\\(root / name / 'mock_case.json'\\)\\)\nPY)",
+      "Bash(2)",
+      "Bash(PYTHONPATH=\"C:/Users/Sergio/Documents/GitHub/Hackaton/src/api\" python - <<'PY'\nimport csv\nfrom pathlib import Path\npath = Path\\('C:/Users/Sergio/Documents/GitHub/Hackaton/data/sentencas_60k.csv'\\)\nwith path.open\\('r', encoding='latin-1', newline=''\\) as f:\n    reader = csv.DictReader\\(f\\)\n    print\\(repr\\(reader.fieldnames[0]\\)\\)\nfrom app.analytics import historical\nprint\\(repr\\(historical.PROCESSO_COLUMN\\)\\)\nprint\\(reader.fieldnames[0] == historical.PROCESSO_COLUMN\\)\nPY)",
+      "Bash(PYTHONPATH=\"C:/Users/Sergio/Documents/GitHub/Hackaton/src/api\" python - <<'PY'\nfrom app.analytics import historical\nprint\\(repr\\(historical.PROCESSO_COLUMN\\)\\)\nprint\\(repr\\(historical.VALOR_CONDENACAO_COLUMN\\)\\)\nPY)"
+    ]
+  }
+}

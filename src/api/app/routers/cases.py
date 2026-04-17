@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db import get_db
 from app.models.case import Case
 from app.schemas.case import CaseIngestResponse, CaseRead
+from app.services.extractor import extract_case_features, extract_texts_from_paths
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -81,9 +82,21 @@ def create_case(
     storage_root = Path(get_settings().case_storage_dir)
     case_dir = storage_root / f"case_{case.id}"
 
-    autos_count = _persist_uploads(autos, case_dir / "autos")
-    subsidios_count = _persist_uploads(subsidios, case_dir / "subsidios")
+    autos_dir = case_dir / "autos"
+    subsidios_dir = case_dir / "subsidios"
+    autos_count = _persist_uploads(autos, autos_dir)
+    subsidios_count = _persist_uploads(subsidios, subsidios_dir)
 
+    extracted_texts = extract_texts_from_paths([
+        *sorted(autos_dir.glob("*.pdf")),
+        *sorted(subsidios_dir.glob("*.pdf")),
+    ])
+    extracted_features = extract_case_features(extracted_texts)
+
+    case.uf = extracted_features["uf"]
+    case.assunto = extracted_features["assunto"]
+    case.sub_assunto = extracted_features["sub_assunto"]
+    case.case_text = extracted_features["case_text"]
     case.source_folder = str(case_dir)
     db.commit()
 
@@ -93,4 +106,7 @@ def create_case(
         source_folder=case.source_folder,
         autos_count=autos_count,
         subsidios_count=subsidios_count,
+        uf=case.uf,
+        assunto=case.assunto,
+        sub_assunto=case.sub_assunto,
     )

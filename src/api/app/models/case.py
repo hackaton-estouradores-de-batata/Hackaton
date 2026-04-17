@@ -18,6 +18,10 @@ class Case(Base):
     valor_causa: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     autor_nome: Mapped[str | None] = mapped_column(String(255))
     autor_cpf: Mapped[str | None] = mapped_column(String(14), index=True)
+    uf: Mapped[str | None] = mapped_column(String(2), index=True)
+    assunto: Mapped[str | None] = mapped_column(String(255), index=True)
+    sub_assunto: Mapped[str | None] = mapped_column(String(255), index=True)
+    case_text: Mapped[str | None] = mapped_column(Text())
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     source_folder: Mapped[str | None] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(
