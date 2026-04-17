@@ -6,7 +6,17 @@
 
 ## 1. Visão Geral da Solução
 
-Plataforma web que recebe um processo (autos + subsídios), aplica uma **política de acordos** baseada em regras + LLM, retorna uma **recomendação** (acordo/defesa + valor sugerido + justificativa) para o advogado, e registra tudo em um **dashboard de monitoramento** para o banco.
+Plataforma web que recebe um processo (autos + subsídios), aplica uma **política de acordos híbrida (LLM + estatística)** e retorna uma **recomendação** (acordo/defesa + valor sugerido + justificativa + confiança) para o advogado, registrando tudo em um **dashboard de monitoramento** para o banco.
+
+**Arquitetura de decisão — LLM nas pontas, estatística no núcleo auditável:**
+
+```
+LLM (extração + feature engineering rica + red flags + embeddings)
+  ↓
+Estatística (score_robustez + EV histórico + percentil + regras YAML) ← núcleo auditável
+  ↓
+LLM (judge + calibração de confiança + justificativa)
+```
 
 **Fluxo end-to-end:**
 
@@ -15,13 +25,16 @@ Plataforma web que recebe um processo (autos + subsídios), aplica uma **políti
     ↓
 [Pipeline de Análise]
   1. Ingestão de PDFs (autos + subsídios)
-  2. Extração estruturada (LLM) → JSON normalizado do caso
-  3. Motor de Decisão (regras + score) → acordo/defesa
-  4. Calculadora de Valor (histórico + LLM) → faixa sugerida
+  2. Extração estruturada (LLM) → JSON + features ricas (red flags, vulnerabilidade, inconsistências)
+  3. Embedding da petição (OpenAI) → retrieval top-K casos similares no histórico
+  4. Motor de Decisão (score_robustez + EV sobre casos similares + regras YAML) → acordo/defesa
+  5. Calculadora de Valor (percentil sobre casos similares + ajustes YAML) → faixa sugerida
+  6. LLM-as-judge revisa a recomendação; se divergir → flag para revisão humana
+  7. LLM calibra confiança (lê contexto completo) e gera justificativa auditável
     ↓
 [Recomendação] → advogado decide → registra outcome
     ↓
-[Dashboard Banco] → aderência + efetividade
+[Dashboard Banco] → aderência + efetividade + taxa de disagreement do judge
 ```
 
 ---
@@ -34,7 +47,8 @@ Plataforma web que recebe um processo (autos + subsídios), aplica uma **políti
 |---|---|---|
 | Frontend | **Next.js 15 + TypeScript + Tailwind + shadcn/ui** | Setup rápido, componentes prontos, deploy Vercel |
 | Backend | **FastAPI (Python)** | Async, tipagem, ótimo para IA/ML, fácil de vibecodar |
-| LLM | **OpenAI (gpt-4o-mini para extração, gpt-4o para decisão)** | Chave fornecida pelo hackathon |
+| LLM | **OpenAI: gpt-4o-mini (extração em lote), gpt-4o (features ricas + judge + justificativa), text-embedding-3-large (retrieval)** | Chave fornecida pelo hackathon — acesso irrestrito |
+| Vector search | **pgvector ou FAISS local** sobre embeddings dos 60k casos | Retrieval semântico de casos similares |
 | DB | **SQLite (dev) → Postgres (prod)** via SQLAlchemy | Zero config inicial |
 | Storage | Filesystem local → S3-compatible | Simples para MVP |
 | Análise histórica | **Pandas + DuckDB** sobre o CSV de 60k sentenças | Query SQL direto no CSV |
@@ -184,6 +198,13 @@ class Case:
     alegacoes: list[str]
     pedidos: list[str]          # dano moral, repetição indébito, etc.
     valor_pedido_danos_morais: Decimal | None
+    # features ricas extraídas por LLM (gpt-4o)
+    red_flags: list[str]        # ex: "data_contrato_anterior_ao_cpf", "assinatura_divergente"
+    vulnerabilidade_autor: Literal["idoso", "analfabeto", "baixa_renda", "nenhuma"] | None
+    indicio_fraude: float       # 0-1, estimado pelo LLM
+    forca_narrativa_autor: float  # 0-1, quão coerente/persuasiva é a petição
+    # embedding para retrieval semântico
+    embedding: list[float]      # text-embedding-3-large (3072d)
     # extraídos dos subsídios
     subsidios: Subsidios         # ver abaixo
     status: Literal["pending", "analyzed", "decided", "closed"]
@@ -208,9 +229,12 @@ class Recommendation:
     decisao: Literal["acordo", "defesa"]
     valor_sugerido_min: Decimal | None
     valor_sugerido_max: Decimal | None
-    justificativa: str               # texto para o advogado
+    justificativa: str               # texto para o advogado (gerado por LLM)
     regras_aplicadas: list[str]      # rastreabilidade
-    confianca: float                 # 0-1
+    casos_similares_ids: list[str]   # top-K usados no EV/percentil (rastreabilidade)
+    confianca: float                 # 0-1, calibrada pelo LLM-as-judge
+    judge_concorda: bool             # True se judge aprovou; False → revisar
+    judge_observacao: str | None     # por que discordou, se discordou
     policy_version: str              # "v1", "v2"...
     created_at: datetime
 
@@ -287,19 +311,37 @@ alcada:
 ### Lógica do Decision Engine
 
 ```
-INPUT: caso estruturado
-1. Calcular score_robustez_subsidios (0-1)
-2. Buscar no histórico: casos similares (valor_causa ± 20%, mesmos pedidos)
-   → custo médio de defesa (condenação + honorários + tempo)
-   → taxa de vitória histórica
-3. EV_defesa = prob_vitoria * 0 + (1-prob_vitoria) * custo_condenacao_esperado
-4. EV_acordo = valor_acordo_sugerido
-5. Decisão:
-   - se score_robustez > 0.8 AND EV_defesa < EV_acordo → DEFESA
-   - se score_robustez < 0.4 → ACORDO (agressivo)
-   - caso contrário → ACORDO (conservador, usar percentil 25 histórico)
-6. Aplicar regras YAML (overrides explícitos do jurídico)
-7. Retornar recomendação com justificativa textual gerada por LLM
+INPUT: caso estruturado + features ricas (red_flags, vulnerabilidade, indicio_fraude)
+
+[Camada 1 — LLM feature extraction já feita no Sprint 1]
+
+[Camada 2 — Retrieval semântico]
+1. Embedding da petição (text-embedding-3-large)
+2. Top-K (k=50) casos similares por cosine similarity no histórico de 60k
+3. Filtrar top-K por valor_causa ± 30% e pedidos compatíveis → casos_similares
+
+[Camada 3 — Núcleo estatístico determinístico]
+4. score_robustez_subsidios (0-1) — soma ponderada das flags dos subsídios
+5. Ajustes por features ricas:
+   - red_flags não-vazia → score -= 0.2
+   - indicio_fraude > 0.7 → score += 0.15 (favorece defesa)
+   - vulnerabilidade_autor != "nenhuma" → score -= 0.1 (CDC/proteção)
+6. Sobre casos_similares:
+   - prob_vitoria = taxa_improcedente
+   - custo_esperado_defesa = média(valor_condenacao | procedente) + custas
+7. EV_defesa = (1 - prob_vitoria) × custo_esperado_defesa
+8. EV_acordo = percentil_25(valor_condenacao em casos_similares) × ajustes_yaml
+9. Decisão:
+   - score_robustez > 0.8 AND EV_defesa < EV_acordo → DEFESA
+   - score_robustez < 0.4 → ACORDO (agressivo: percentil 35)
+   - caso contrário → ACORDO (conservador: percentil 25)
+10. Aplicar regras YAML (overrides explícitos do jurídico)
+
+[Camada 4 — LLM judge + calibração + justificativa]
+11. LLM-as-judge (gpt-4o): recebe caso + casos_similares + decisão + valor
+    → retorna {concorda: bool, observacao: str, confianca_calibrada: 0-1}
+12. Se judge discorda → status = "needs_review"; advogado decide sem auto-aprovação
+13. LLM gera justificativa narrativa citando casos similares, red flags e fatores decisivos
 ```
 
 ---
@@ -346,24 +388,30 @@ POST   /api/policy                       # Upload nova versão (admin)
 - [ ] Inicializar `src/api/` com FastAPI + pyproject.toml (uv)
 - [ ] Converter `sentencas_60k.xlsx` → `sentencas_60k.csv` (script único: `pandas read_excel → to_csv`)
 
-### Sprint 1 — Pipeline de extração (3h)
+### Sprint 1 — Pipeline de extração + features ricas (3h)
 - [ ] Endpoint `POST /api/cases` aceita PDFs
-- [ ] Extractor lê PDF (`pypdf` ou `pdfplumber`) → texto
-- [ ] LLM extrai JSON estruturado (autos + subsídios)
-- [ ] Persiste no DB
-- [ ] **Checkpoint**: rodar nos 2 casos exemplo e validar JSON
+- [ ] Extractor lê PDF (`pdfplumber`) → texto
+- [ ] LLM (gpt-4o-mini) extrai JSON estruturado básico (autos + subsídios)
+- [ ] LLM (gpt-4o) extrai features ricas: `red_flags`, `vulnerabilidade_autor`, `indicio_fraude`, `forca_narrativa_autor`
+- [ ] Gera embedding da petição (`text-embedding-3-large`)
+- [ ] Persiste no DB (incluindo embedding)
+- [ ] **Checkpoint**: rodar nos 2 casos exemplo e validar JSON + features
 
-### Sprint 2 — Análise histórica (2h)
+### Sprint 2 — Análise histórica + retrieval semântico (2h)
 - [ ] Script `analyze_historical.py` — EDA do CSV de 60k
+- [ ] Gerar embeddings dos 60k casos (batch) e persistir em FAISS/pgvector
 - [ ] DuckDB views: taxa_vitoria, valor_condenacao_medio por faixa
-- [ ] Função `casos_similares(caso) → stats` pronta para o motor
+- [ ] Função `casos_similares(caso, k=50) → list[Case]` via cosine + filtros
+- [ ] Função `stats_similares(casos) → {prob_vitoria, custo_medio, percentil_25}`
 
-### Sprint 3 — Motor de decisão + valor (3h)
+### Sprint 3 — Motor de decisão + judge + valor (3h)
 - [ ] `policy/acordos_v1.yaml` inicial
-- [ ] `decision_engine.py` lendo YAML
-- [ ] `value_estimator.py` combinando histórico + regras
-- [ ] Endpoint `GET /recommendation` funcionando
-- [ ] **Checkpoint**: recomendação plausível para os 2 casos exemplo
+- [ ] `decision_engine.py` — score + ajustes por features ricas + EV sobre similares
+- [ ] `value_estimator.py` — percentil sobre similares + ajustes YAML
+- [ ] `judge.py` — LLM-as-judge revisa decisão e calibra confiança
+- [ ] `justifier.py` — LLM gera justificativa citando casos similares
+- [ ] Endpoint `GET /recommendation` orquestra tudo
+- [ ] **Checkpoint**: recomendação plausível + judge aprova + justificativa referencia casos similares
 
 ### Sprint 4 — UI do advogado (3h)
 - [ ] Inbox de casos
@@ -394,7 +442,9 @@ POST   /api/policy                       # Upload nova versão (admin)
 | Decisão | Alternativa descartada | Motivo |
 |---|---|---|
 | Política em YAML externo | Hardcode em Python | Jurídico precisa iterar sem dev |
-| LLM para extração, regras para decisão | LLM para tudo | Decisão precisa ser auditável/rastreável |
+| LLM nas pontas (features + judge + justificativa), estatística no núcleo | LLM decidindo tudo OU só estatística pura | Extração rica (red flags, vulnerabilidade) e retrieval semântico são inviáveis sem LLM; decisão e valor continuam auditáveis no núcleo estatístico; judge evita erros óbvios que stats não detecta |
+| Embeddings + retrieval semântico | Filtro por `valor_causa ± 20%` | Similaridade semântica captura casos realmente análogos; filtro numérico deixa passar ruído |
+| LLM-as-judge como segunda camada | Confiar na decisão estatística sozinha | Sistemas high-stakes (Anthropic/OpenAI) usam judge para flag de revisão humana |
 | DuckDB sobre CSV | Subir tudo pro Postgres | Zero ETL, query rápida no hackathon |
 | SQLite único | SQLite dev + Postgres prod | MVP local — sem Docker, sem credenciais, um arquivo |
 | XLSX → CSV (conversão única) | DuckDB lendo XLSX direto | CSV é mais simples e sem dependência de openpyxl no runtime |
@@ -433,7 +483,7 @@ POST   /api/policy                       # Upload nova versão (admin)
 | **Criatividade e usabilidade** | UX do advogado com recomendação + justificativa + 1-clique outcome |
 | **Colaboração** | Divisão clara: front / back-extração / back-motor / dashboard-analytics |
 | **Execução** | MVP funcional end-to-end nos 2 casos exemplo + backtest nos 60k |
-| **Uso de IA** | LLM para extração (tarefa difícil), regras para decisão (auditável), LLM para gerar justificativas |
+| **Uso de IA** | Arquitetura em 3 camadas: (1) LLM para extração + features ricas + embeddings, (2) núcleo estatístico determinístico (score + EV + percentil) auditável, (3) LLM-as-judge + calibração de confiança + justificativa. Padrões globais: RAG, function calling, LLM-as-judge |
 
 ---
 
