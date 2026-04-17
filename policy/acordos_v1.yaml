@@ -1,0 +1,24 @@
+version: "1.0"
+description: "Politica inicial de acordos para o MVP do Hackathon UFMG 2026."
+
+robustez:
+  thresholds:
+    defesa: 0.72
+    acordo: 0.45
+  pesos:
+    tem_contrato: 3
+    tem_extrato: 1
+    tem_dossie: 2
+    tem_comprovante: 2
+    assinatura_validada: 2
+
+features:
+  penalidade_vulnerabilidade: 0.08
+  penalidade_indicio_fraude: 0.20
+  penalidade_por_red_flag: 0.04
+  penalidade_narrativa: 0.12
+
+valor:
+  percentual_min_valor_base: 0.15
+  percentual_max_valor_base: 0.25
+  piso_minimo: 1500

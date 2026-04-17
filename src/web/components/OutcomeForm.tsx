@@ -76,8 +76,9 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
   if (done) {
     return (
       <Card>
-        <CardContent className="pt-6 text-center text-sm text-muted-foreground">
-          ✓ Decisão registrada com sucesso.
+        <CardContent className="space-y-2 pt-6 text-center text-sm text-muted-foreground">
+          <p>✓ Decisão registrada com sucesso.</p>
+          <p className="text-xs">Fluxo validado em modo mock e pronto para integração do backend.</p>
         </CardContent>
       </Card>
     )

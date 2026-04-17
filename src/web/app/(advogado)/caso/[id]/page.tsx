@@ -15,29 +15,42 @@ export default async function CasoPage({ params }: Props) {
   const [caso, rec] = await Promise.all([getCase(id), getRecommendation(id)])
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link href="/inbox" className="hover:text-foreground transition-colors">← Inbox</Link>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Link href="/inbox" className="transition-colors hover:text-foreground">
+          ← Inbox
+        </Link>
         <span>/</span>
         <span className="font-mono text-xs">{caso.numero_processo ?? id}</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section className="rounded-2xl border bg-background p-6 shadow-sm">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Análise do caso</p>
+            <h1 className="mt-1 text-2xl font-semibold">Painel do advogado</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Revise os sinais do caso, a recomendação atual e registre a decisão final.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <CaseViewer caso={caso} />
-          <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-            <p className="text-xs text-muted-foreground font-medium mb-2">Documentos</p>
-            <ul className="space-y-1 text-muted-foreground">
-              <li>📄 Autos do processo</li>
-              <li>📄 Contrato</li>
-              <li>📄 Extrato bancário</li>
-              <li>📄 Comprovante de crédito BACEN</li>
-              <li>📄 Dossiê Veritas</li>
-              <li>📄 Demonstrativo de evolução da dívida</li>
-              <li>📄 Laudo referenciado</li>
+          <div className="rounded-2xl border bg-background p-5 shadow-sm">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Documentos</p>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li>Autos do processo</li>
+              <li>Contrato</li>
+              <li>Extrato bancário</li>
+              <li>Comprovante de crédito</li>
+              <li>Dossiê documental</li>
+              <li>Demonstrativo da dívida</li>
             </ul>
-            <p className="text-xs text-muted-foreground mt-3 italic">
-              Visualizador de PDF disponível após integração com backend (Sprint 4).
+            <p className="mt-3 text-xs italic text-muted-foreground">
+              A visualização direta dos PDFs entra quando a origem real dos arquivos estiver estável.
             </p>
           </div>
         </div>

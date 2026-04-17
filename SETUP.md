@@ -1,69 +1,52 @@
 # Setup
 
-## Pré-requisitos
+## Requisitos
 
-- Docker + Docker Compose
-- Chave da OpenAI
+- Docker
+- Docker Compose
 
-## Rodar com Docker (recomendado)
+## Variaveis
 
-```bash
-# 1. Copiar variáveis de ambiente
-cp .env.example .env
+Copie `.env.example` para `.env` e ajuste se necessario.
 
-# 2. Preencher a chave da OpenAI
-#    Edite .env e insira: OPENAI_API_KEY=sk-...
-
-# 3. Subir os serviços
-docker compose up --build
-```
-
-- Frontend: http://localhost:3000
-- Backend:  http://localhost:8000
-- Docs API: http://localhost:8000/docs
-
----
-
-## Rodar localmente (sem Docker)
-
-### Backend
+## Subir a stack
 
 ```bash
-cd src/api
-../../.tools/uv/bin/uv sync --frozen --python 3.12
-../../.tools/uv/bin/uv run --python 3.12 uvicorn app.main:app --reload
+docker compose build api web
+docker compose up -d
+docker compose ps
 ```
 
-### Frontend
+## Desenvolvimento com Docker
+
+O serviço `web` roda em modo desenvolvimento com hot reload e ferramentas de dev instaladas no contêiner.
 
 ```bash
-cd src/web
-npm install
-npm run dev
+# acompanhar logs do frontend
+docker compose logs -f web
+
+# rodar lint dentro do contêiner
+docker compose exec web npm run lint
+
+# abrir shell no frontend
+docker compose exec web sh
 ```
 
----
-
-## Dados de exemplo
-
-Os arquivos dos dois casos de exemplo estão em `arquivos_adicionais/` e são montados automaticamente no container da API.
-
-## Mock (frontend sem backend)
-
-Para rodar o frontend com dados simulados, sem precisar da API:
+## Testes basicos
 
 ```bash
-# Em src/web/.env.local
-NEXT_PUBLIC_USE_MOCK=true
+curl http://127.0.0.1:8000/healthz
+curl http://127.0.0.1:8000/api/cases
+curl -I http://127.0.0.1:3000/inbox
 ```
 
-## Variáveis de ambiente
+## Ingestao de um caso exemplo
 
-| Variável | Padrão | Descrição |
-|----------|--------|-----------|
-| `OPENAI_API_KEY` | — | Chave da OpenAI (**obrigatória**) |
-| `API_PORT` | `8000` | Porta do backend |
-| `WEB_PORT` | `3000` | Porta do frontend |
-| `DATABASE_URL` | `sqlite:////app/data/app.db` | Banco de dados |
-| `APP_ENV` | `development` | Ambiente |
-| `NEXT_PUBLIC_USE_MOCK` | `false` | Usar dados simulados no frontend |
+```bash
+curl -X POST http://127.0.0.1:8000/api/cases \
+  -F numero_processo=0801234-56.2024.8.10.0001 \
+  -F valor_causa=15000 \
+  -F autor_nome='Maria Aparecida Silva' \
+  -F autos_files=@'arquivos_adicionais/Caso_01_0801234-56-2024-8-10-0001/01_Autos_Processo_0801234-56-2024-8-10-0001.pdf' \
+  -F subsidios_files=@'arquivos_adicionais/Caso_01_0801234-56-2024-8-10-0001/02_Contrato_502348719.pdf'
+```

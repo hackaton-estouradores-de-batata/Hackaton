@@ -21,7 +21,9 @@ class Outcome(Base):
     valor_proposto: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     valor_acordado: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     resultado_negociacao: Mapped[str | None] = mapped_column(String(32))
+    sentenca: Mapped[str | None] = mapped_column(String(32))
     valor_condenacao: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    custos_processuais: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

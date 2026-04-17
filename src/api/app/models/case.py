@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Numeric, String, Text, func
+from sqlalchemy import JSON, Date, DateTime, Float, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -22,6 +22,19 @@ class Case(Base):
     assunto: Mapped[str | None] = mapped_column(String(255), index=True)
     sub_assunto: Mapped[str | None] = mapped_column(String(255), index=True)
     case_text: Mapped[str | None] = mapped_column(Text())
+    data_distribuicao: Mapped[date | None] = mapped_column(Date())
+    alegacoes: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    pedidos: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    valor_pedido_danos_morais: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    red_flags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    vulnerabilidade_autor: Mapped[str | None] = mapped_column(String(32))
+    indicio_fraude: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    forca_narrativa_autor: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    inconsistencias_temporais: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    subsidios: Mapped[dict | None] = mapped_column(JSON)
+    embedding: Mapped[list[float] | None] = mapped_column(JSON)
+    autos_text: Mapped[str | None] = mapped_column(Text())
+    subsidios_text: Mapped[str | None] = mapped_column(Text())
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     source_folder: Mapped[str | None] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(

@@ -1,0 +1,8 @@
+Considere o caso estruturado, os subsidios, as features ricas e a politica de acordos.
+Retorne um JSON com:
+- decisao
+- justificativa
+- confianca
+- regras_aplicadas
+
+Responda apenas com JSON valido.

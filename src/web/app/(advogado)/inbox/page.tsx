@@ -24,46 +24,76 @@ export default async function InboxPage() {
   const cases = await getCases()
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Caixa de entrada</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {cases.length} processo(s) atribuído(s)
-        </p>
-      </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
+      <section className="rounded-2xl border bg-background p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Inbox do advogado
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold">Caixa de entrada</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {cases.length} processo(s) disponível(is) para análise.
+            </p>
+          </div>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nº do processo</TableHead>
-            <TableHead>Autor</TableHead>
-            <TableHead className="text-right">Valor da causa</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {cases.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell className="font-mono text-xs">{c.numero_processo ?? "—"}</TableCell>
-              <TableCell>{c.autor_nome ?? "—"}</TableCell>
-              <TableCell className="text-right">
-                {c.valor_causa != null
-                  ? c.valor_causa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                  : "—"}
-              </TableCell>
-              <TableCell>
-                <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-              </TableCell>
-              <TableCell>
-                <Link href={`/caso/${c.id}`} className="text-sm text-primary hover:underline font-medium">
-                  Analisar →
-                </Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          <div className="grid grid-cols-2 gap-3 text-sm md:w-[280px]">
+            <div className="rounded-xl border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Pendentes</p>
+              <p className="mt-1 text-2xl font-semibold">
+                {cases.filter((c) => c.status === "pending").length}
+              </p>
+            </div>
+            <div className="rounded-xl border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Analisados</p>
+              <p className="mt-1 text-2xl font-semibold">
+                {cases.filter((c) => c.status !== "pending").length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border bg-background p-4 shadow-sm">
+        {cases.length === 0 ? (
+          <div className="rounded-xl border border-dashed bg-muted/30 px-6 py-12 text-center text-sm text-muted-foreground">
+            Nenhum processo disponível no momento.
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nº do processo</TableHead>
+                <TableHead>Autor</TableHead>
+                <TableHead className="text-right">Valor da causa</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cases.map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-mono text-xs">{c.numero_processo ?? "—"}</TableCell>
+                  <TableCell>{c.autor_nome ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    {c.valor_causa != null
+                      ? c.valor_causa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/caso/${c.id}`} className="text-sm font-medium text-primary hover:underline">
+                      Analisar →
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
     </div>
   )
 }

@@ -7,6 +7,4 @@ __pycache__/
 .python-version
 *.pyc
 *.pyo
-data/*.db
-data/*.sqlite
-data/processos_exemplo/
+data/

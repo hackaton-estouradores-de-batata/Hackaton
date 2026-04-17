@@ -8,7 +8,9 @@ class OutcomeCreate(BaseModel):
     valor_proposto: Decimal | None = None
     valor_acordado: Decimal | None = None
     resultado_negociacao: str | None = None
+    sentenca: str | None = None
     valor_condenacao: Decimal | None = None
+    custos_processuais: Decimal | None = None
 
 
 class OutcomeRead(BaseModel):
@@ -20,6 +22,8 @@ class OutcomeRead(BaseModel):
     valor_proposto: Decimal | None = None
     valor_acordado: Decimal | None = None
     resultado_negociacao: str | None = None
+    sentenca: str | None = None
     valor_condenacao: Decimal | None = None
+    custos_processuais: Decimal | None = None
 
     model_config = ConfigDict(from_attributes=True)

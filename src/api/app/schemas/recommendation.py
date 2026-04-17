@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -16,5 +17,6 @@ class RecommendationRead(BaseModel):
     casos_similares_ids: list[str] = []
     judge_concorda: bool | None = None
     judge_observacao: str | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)

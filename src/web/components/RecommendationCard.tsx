@@ -66,12 +66,12 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
 
         <Separator />
 
-        {rec.justificativa && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Justificativa</p>
-            <p className="text-sm leading-relaxed">{rec.justificativa}</p>
-          </div>
-        )}
+        <div>
+          <p className="text-xs text-muted-foreground mb-1">Justificativa</p>
+          <p className="text-sm leading-relaxed">
+            {rec.justificativa ?? "A justificativa detalhada será exibida quando a integração final do motor estiver disponível."}
+          </p>
+        </div>
 
         {rec.regras_aplicadas && rec.regras_aplicadas.length > 0 && (
           <div>
