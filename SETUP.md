@@ -17,6 +17,21 @@ docker compose up -d
 docker compose ps
 ```
 
+## Desenvolvimento com Docker
+
+O serviço `web` roda em modo desenvolvimento com hot reload e ferramentas de dev instaladas no contêiner.
+
+```bash
+# acompanhar logs do frontend
+docker compose logs -f web
+
+# rodar lint dentro do contêiner
+docker compose exec web npm run lint
+
+# abrir shell no frontend
+docker compose exec web sh
+```
+
 ## Testes basicos
 
 ```bash

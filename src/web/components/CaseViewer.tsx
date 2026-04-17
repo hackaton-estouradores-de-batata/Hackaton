@@ -86,15 +86,19 @@ export function CaseViewer({ caso }: { caso: Case }) {
           </div>
         )}
 
-        {caso.red_flags && caso.red_flags.length > 0 && (
+        {caso.red_flags && caso.red_flags.length > 0 ? (
           <div className="rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 dark:border-yellow-800 dark:bg-yellow-950">
-            <div className="flex items-center gap-1 mb-1">
+            <div className="mb-1 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3 text-yellow-600" />
               <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">Red flags</p>
             </div>
             {caso.red_flags.map((f) => (
               <p key={f} className="text-xs font-mono text-yellow-700 dark:text-yellow-400">{f}</p>
             ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed bg-muted/30 px-3 py-3 text-xs text-muted-foreground">
+            Nenhuma red flag disponível para este caso no modo atual.
           </div>
         )}
       </CardContent>
