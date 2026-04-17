@@ -124,12 +124,27 @@ export function CaseViewer({ caso }: { caso: Case }) {
           <div>
             <p className="mb-2 text-xs text-muted-foreground">Subsídios estruturados</p>
             <div className="space-y-1">
-              {Object.entries(caso.subsidios).map(([key, value]) => (
-                <div key={key} className="flex items-start justify-between gap-3 rounded bg-muted px-2 py-1 text-xs">
-                  <span className="font-medium">{key}</span>
-                  <span className="text-right text-muted-foreground">{String(value)}</span>
-                </div>
-              ))}
+              {Object.entries(caso.subsidios).map(([key, value]) => {
+                const label = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+                let displayValue: React.ReactNode = String(value)
+                let valueColor = "text-muted-foreground"
+                if (typeof value === "boolean") {
+                  if (value) {
+                    displayValue = <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">✓ Presente</span>
+                  } else {
+                    displayValue = <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">✕ Ausente</span>
+                  }
+                }
+
+                return (
+                  <div key={key} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-background/50 px-3 py-2 text-xs shadow-sm transition-colors hover:bg-muted/40">
+                    <span className="font-medium text-foreground/80">{label}</span>
+                    <div className={`font-semibold ${typeof value === 'boolean' ? '' : 'text-primary'}`}>
+                      {displayValue}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
