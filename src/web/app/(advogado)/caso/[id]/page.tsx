@@ -4,6 +4,8 @@ import { CaseViewer } from "@/components/CaseViewer"
 import { RecommendationCard } from "@/components/RecommendationCard"
 import { OutcomeForm } from "@/components/OutcomeForm"
 
+export const dynamic = "force-dynamic"
+
 interface Props {
   params: Promise<{ id: string }>
 }

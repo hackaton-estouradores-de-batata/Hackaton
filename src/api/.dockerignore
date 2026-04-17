@@ -1,5 +1,8 @@
 __pycache__/
 .pytest_cache/
 .venv/
+.python-version
+*.pyc
+*.pyo
 data/*.db
 data/*.sqlite
