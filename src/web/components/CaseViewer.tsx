@@ -2,21 +2,8 @@ import { AlertTriangle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import type { Case, CaseStatus } from "@/lib/types"
-
-const STATUS_LABEL: Record<CaseStatus, string> = {
-  pending: "Aguardando",
-  analyzed: "Analisado",
-  decided: "Decidido",
-  closed: "Encerrado",
-}
-
-const STATUS_VARIANT: Record<CaseStatus, "default" | "secondary" | "outline"> = {
-  pending: "secondary",
-  analyzed: "default",
-  decided: "outline",
-  closed: "outline",
-}
+import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/case-status"
+import type { Case } from "@/lib/types"
 
 function brl(v: number) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })

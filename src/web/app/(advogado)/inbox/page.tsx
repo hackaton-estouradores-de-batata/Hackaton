@@ -1,27 +1,17 @@
 import Link from "next/link"
 import { getCases } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
+import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/case-status"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import type { CaseStatus } from "@/lib/types"
 
 export const dynamic = "force-dynamic"
 
-const STATUS_LABEL: Record<CaseStatus, string> = {
-  pending: "Aguardando",
-  analyzed: "Analisado",
-  decided: "Decidido",
-  closed: "Encerrado",
-}
-
-const STATUS_VARIANT: Record<CaseStatus, "default" | "secondary" | "outline"> = {
-  pending: "secondary",
-  analyzed: "default",
-  decided: "outline",
-  closed: "outline",
-}
-
 export default async function InboxPage() {
   const cases = await getCases()
+  const pendingCount = cases.filter((c) => c.status === "pending").length
+  const reviewCount = cases.filter((c) => c.status === "needs_review").length
+  const inProgressCount = cases.filter((c) => c.status === "analyzed" || c.status === "decided").length
+  const closedCount = cases.filter((c) => c.status === "closed").length
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8">
@@ -37,18 +27,22 @@ export default async function InboxPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm md:w-[280px]">
+          <div className="grid grid-cols-2 gap-3 text-sm md:w-[520px] md:grid-cols-4">
             <div className="rounded-xl border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">Pendentes</p>
-              <p className="mt-1 text-2xl font-semibold">
-                {cases.filter((c) => c.status === "pending").length}
-              </p>
+              <p className="mt-1 text-2xl font-semibold">{pendingCount}</p>
+            </div>
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+              <p className="text-xs text-muted-foreground">Revisão humana</p>
+              <p className="mt-1 text-2xl font-semibold text-destructive">{reviewCount}</p>
             </div>
             <div className="rounded-xl border bg-muted/40 p-3">
-              <p className="text-xs text-muted-foreground">Analisados</p>
-              <p className="mt-1 text-2xl font-semibold">
-                {cases.filter((c) => c.status !== "pending").length}
-              </p>
+              <p className="text-xs text-muted-foreground">Em fluxo</p>
+              <p className="mt-1 text-2xl font-semibold">{inProgressCount}</p>
+            </div>
+            <div className="rounded-xl border bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">Encerrados</p>
+              <p className="mt-1 text-2xl font-semibold">{closedCount}</p>
             </div>
           </div>
         </div>
@@ -71,9 +65,9 @@ export default async function InboxPage() {
                 <TableHead />
               </TableRow>
             </TableHeader>
-            <TableBody>
+              <TableBody>
               {cases.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} className={c.status === "needs_review" ? "bg-destructive/5" : undefined}>
                   <TableCell className="font-mono text-xs">{c.numero_processo ?? "—"}</TableCell>
                   <TableCell>{c.autor_nome ?? "—"}</TableCell>
                   <TableCell>

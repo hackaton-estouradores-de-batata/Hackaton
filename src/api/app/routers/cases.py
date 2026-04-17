@@ -12,9 +12,15 @@ from app.db import get_db
 from app.models.case import Case
 from app.models.recommendation import Recommendation
 from app.schemas.case import CaseIngestResponse, CaseRead
-from app.services import analyze_case_documents, build_recommendation_payload, load_policy
+from app.services import (
+    analyze_case_documents,
+    apply_recommendation_payload,
+    build_recommendation_for_case,
+    sync_case_status,
+)
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
+RECOMMENDATION_HISTORY_TOP_K = 10
 
 
 def _safe_filename(filename: str | None, fallback: str) -> str:
@@ -161,35 +167,26 @@ def _apply_analysis_to_case(case: Case, analysis: dict[str, Any]) -> None:
     case.status = "analyzed"
 
 
-def _upsert_recommendation(db: Session, case: Case, analysis: dict[str, Any]) -> Recommendation:
-    policy = load_policy()
-    recommendation_payload = build_recommendation_payload(
-        {
-            "valor_causa": case.valor_causa,
-            "valor_pedido_danos_morais": case.valor_pedido_danos_morais,
-            "red_flags": case.red_flags,
-            "vulnerabilidade_autor": case.vulnerabilidade_autor,
-            "indicio_fraude": case.indicio_fraude,
-            "forca_narrativa_autor": case.forca_narrativa_autor,
-            "subsidios": case.subsidios,
-        },
-        policy,
-    )
-
+def _upsert_recommendation(db: Session, case: Case) -> Recommendation:
     recommendation = (
         db.query(Recommendation)
         .filter(Recommendation.case_id == case.id)
         .order_by(Recommendation.created_at.desc())
         .first()
     )
+    recommendation_payload, _ = build_recommendation_for_case(
+        case,
+        existing_recommendation=recommendation,
+        history_k=RECOMMENDATION_HISTORY_TOP_K,
+    )
+    sync_case_status(case, recommendation_payload)
+
     if recommendation is None:
         recommendation = Recommendation(case_id=case.id, **recommendation_payload)
         db.add(recommendation)
         return recommendation
 
-    for key, value in recommendation_payload.items():
-        setattr(recommendation, key, value)
-    return recommendation
+    return apply_recommendation_payload(recommendation, recommendation_payload)
 
 
 @router.get("", response_model=list[CaseRead])
@@ -243,7 +240,7 @@ def create_case(
         sorted((case_dir / "subsidios").glob("*.pdf")),
     )
     _apply_analysis_to_case(case, analysis)
-    _upsert_recommendation(db, case, analysis)
+    _upsert_recommendation(db, case)
     db.commit()
 
     return CaseIngestResponse(

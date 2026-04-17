@@ -2,15 +2,28 @@ from __future__ import annotations
 
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
+from typing import Any, Sequence
 
-from app.core.config import PROJECT_ROOT
+import numpy as np
+
+try:
+    import faiss
+except Exception:  # pragma: no cover - import guard for non-runtime tooling
+    faiss = None
+
+from app.analytics.semantic import (
+    LOCAL_EMBEDDING_DIMENSIONS,
+    build_case_document_text,
+    build_local_embedding,
+    normalize_embedding_array,
+)
+from app.core.config import get_settings
 from app.models.case import Case
 
-CSV_PATH = PROJECT_ROOT / "data" / "sentencas_60k.csv"
 UF_COLUMN = "UF"
 ASSUNTO_COLUMN = "Assunto"
 SUBASSUNTO_COLUMN = "Sub-assunto"
@@ -33,11 +46,24 @@ class HistoricalCase:
 
 
 @dataclass(frozen=True)
+class HistoricalCaseMatch(HistoricalCase):
+    similarity_score: float
+
+
+@dataclass(frozen=True)
 class SimilarCasesStats:
     prob_vitoria: float
     custo_medio_defesa: Decimal
     percentil_25: Decimal
     percentil_50: Decimal
+
+
+@dataclass(frozen=True)
+class SemanticIndexMetadata:
+    provider: str
+    model: str
+    dimensions: int
+    row_count: int
 
 
 RESULTADOS_VITORIA = {
@@ -64,12 +90,36 @@ def parse_decimal(value: str) -> Decimal | None:
         return None
 
 
+def _historical_csv_path() -> Path:
+    settings = get_settings()
+    if settings.historical_csv_path:
+        return Path(settings.historical_csv_path)
+    return Path(settings.case_storage_dir).expanduser().parent / "sentencas_60k.csv"
+
+
+def _historical_data_dir() -> Path:
+    return _historical_csv_path().parent
+
+
+def _embeddings_matrix_path() -> Path:
+    return _historical_data_dir() / "embeddings.npy"
+
+
+def _embeddings_index_path() -> Path:
+    return _historical_data_dir() / "embeddings.faiss"
+
+
+def _embeddings_metadata_path() -> Path:
+    return _historical_data_dir() / "embeddings_metadata.json"
+
+
 @lru_cache
 def _csv_columns() -> tuple[str, str]:
-    if not CSV_PATH.exists():
-        raise FileNotFoundError(f"Arquivo historico nao encontrado em {CSV_PATH}")
+    csv_path = _historical_csv_path()
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Arquivo historico nao encontrado em {csv_path}")
 
-    header = CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",")
+    header = csv_path.open("r", encoding="utf-8", newline="").readline().strip().split(",")
     processo_column = next(name for name in header if "processo" in name.lower())
     valor_condenacao_column = next(name for name in header if "indeniza" in name.lower())
     return processo_column, valor_condenacao_column
@@ -77,13 +127,14 @@ def _csv_columns() -> tuple[str, str]:
 
 @lru_cache
 def load_historical_cases() -> tuple[HistoricalCase, ...]:
-    if not CSV_PATH.exists():
+    csv_path = _historical_csv_path()
+    if not csv_path.exists():
         return tuple()
 
     processo_column, valor_condenacao_column = _csv_columns()
     records: list[HistoricalCase] = []
 
-    with CSV_PATH.open("r", encoding="latin-1", newline="") as csv_file:
+    with csv_path.open("r", encoding="utf-8", newline="") as csv_file:
         reader = csv.DictReader(csv_file)
         for row_index, row in enumerate(reader):
             records.append(
@@ -103,6 +154,79 @@ def load_historical_cases() -> tuple[HistoricalCase, ...]:
     return tuple(records)
 
 
+def _load_legacy_metadata(raw_payload: Any, matrix: np.ndarray | None) -> SemanticIndexMetadata | None:
+    if not isinstance(raw_payload, list):
+        return None
+    dimensions = int(matrix.shape[1]) if matrix is not None and matrix.ndim == 2 else LOCAL_EMBEDDING_DIMENSIONS
+    return SemanticIndexMetadata(
+        provider="legacy-local",
+        model="legacy-stub-v0",
+        dimensions=dimensions,
+        row_count=len(raw_payload),
+    )
+
+
+@lru_cache
+def load_semantic_index_metadata() -> SemanticIndexMetadata | None:
+    metadata_path = _embeddings_metadata_path()
+    matrix = load_semantic_matrix()
+    if not metadata_path.exists():
+        if matrix is None:
+            return None
+        return SemanticIndexMetadata(
+            provider="local",
+            model="local-semantic-v1",
+            dimensions=int(matrix.shape[1]),
+            row_count=int(matrix.shape[0]),
+        )
+
+    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict):
+        return SemanticIndexMetadata(
+            provider=str(payload.get("provider", "local")),
+            model=str(payload.get("model", "local-semantic-v1")),
+            dimensions=int(payload.get("dimensions") or (matrix.shape[1] if matrix is not None else 0)),
+            row_count=int(payload.get("row_count") or (matrix.shape[0] if matrix is not None else 0)),
+        )
+    return _load_legacy_metadata(payload, matrix)
+
+
+@lru_cache
+def load_semantic_matrix() -> np.ndarray | None:
+    matrix_path = _embeddings_matrix_path()
+    if not matrix_path.exists():
+        return None
+
+    matrix = np.load(matrix_path)
+    if matrix.ndim != 2:
+        return None
+    return np.asarray(matrix, dtype=np.float32)
+
+
+@lru_cache
+def load_semantic_index():
+    metadata = load_semantic_index_metadata()
+    if metadata is None or metadata.dimensions <= 0 or faiss is None:
+        return None
+
+    index_path = _embeddings_index_path()
+    if index_path.exists():
+        try:
+            index = faiss.read_index(str(index_path))
+            return index, metadata
+        except Exception:
+            pass
+
+    matrix = load_semantic_matrix()
+    if matrix is None or matrix.size == 0:
+        return None
+
+    normalized = np.vstack([normalize_embedding_array(row) for row in matrix]).astype(np.float32)
+    index = faiss.IndexFlatIP(normalized.shape[1])
+    index.add(normalized)
+    return index, metadata
+
+
 def _cause_bounds(valor_causa: Decimal | None) -> tuple[Decimal | None, Decimal | None]:
     if valor_causa is None:
         return None, None
@@ -111,34 +235,194 @@ def _cause_bounds(valor_causa: Decimal | None) -> tuple[Decimal | None, Decimal 
     return lower, upper
 
 
-def _score_similarity(case: Case, item: HistoricalCase) -> tuple[int, Decimal, int]:
-    score = 0
-    if case.uf and item.uf.casefold() == case.uf.casefold():
-        score += 3
-    if case.assunto and item.assunto.casefold() == case.assunto.casefold():
-        score += 4
-    if case.sub_assunto and item.sub_assunto.casefold() == case.sub_assunto.casefold():
-        score += 2
-
-    distance = abs((item.valor_causa or Decimal("0")) - (case.valor_causa or Decimal("0")))
-    return (-score, distance, item.source_index)
+def _value_distance(case: Case, item: HistoricalCase) -> Decimal:
+    return abs((item.valor_causa or Decimal("0")) - (case.valor_causa or Decimal("0")))
 
 
+def _value_similarity(case: Case, item: HistoricalCase) -> float:
+    if case.valor_causa is None or item.valor_causa is None or case.valor_causa <= 0:
+        return 0.0
 
-def casos_similares(case: Case, k: int = 50) -> list[HistoricalCase]:
+    delta = abs(item.valor_causa - case.valor_causa)
+    ratio = delta / case.valor_causa
+    normalized = min(float(ratio / Decimal("0.30")), 1.0)
+    return round(max(0.0, 1.0 - normalized), 4)
+
+
+def _pedido_overlap_score(case: Case, item: HistoricalCase) -> float:
+    pedidos = [str(pedido).strip().casefold() for pedido in (case.pedidos or []) if str(pedido).strip()]
+    if not pedidos:
+        return 0.0
+
+    haystack = " ".join([item.assunto, item.sub_assunto, item.resultado_macro, item.resultado_micro]).casefold()
+    hits = 0
+
+    for pedido in pedidos:
+        tokens = [token for token in pedido.replace("_", " ").split() if len(token) >= 5]
+        if tokens and any(token in haystack for token in tokens):
+            hits += 1
+
+    return round(min(hits / max(len(pedidos), 1), 1.0), 4)
+
+
+def _structured_similarity(case: Case, item: HistoricalCase) -> float:
+    weighted_score = 0.0
+    total_weight = 0.0
+
+    if case.uf:
+        total_weight += 0.20
+        if item.uf.casefold() == case.uf.casefold():
+            weighted_score += 0.20
+
+    if case.assunto:
+        total_weight += 0.35
+        if item.assunto.casefold() == case.assunto.casefold():
+            weighted_score += 0.35
+
+    if case.sub_assunto:
+        total_weight += 0.15
+        if item.sub_assunto.casefold() == case.sub_assunto.casefold():
+            weighted_score += 0.15
+
+    if case.valor_causa is not None and item.valor_causa is not None:
+        total_weight += 0.20
+        weighted_score += 0.20 * _value_similarity(case, item)
+
+    pedido_overlap = _pedido_overlap_score(case, item)
+    if pedido_overlap:
+        total_weight += 0.10
+        weighted_score += 0.10 * pedido_overlap
+
+    if total_weight == 0:
+        return 0.0
+    return round(weighted_score / total_weight, 4)
+
+
+def _serialize_match(item: HistoricalCaseMatch) -> dict[str, object]:
+    payload = asdict(item)
+    for field_name in ("valor_causa", "valor_condenacao"):
+        value = payload[field_name]
+        payload[field_name] = str(value) if value is not None else None
+    return payload
+
+
+def _semantic_query_text(case: Case) -> str:
+    return build_case_document_text(
+        numero_processo=case.numero_processo,
+        uf=case.uf,
+        assunto=case.assunto,
+        sub_assunto=case.sub_assunto,
+        valor_causa=case.valor_causa,
+        alegacoes=case.alegacoes,
+        pedidos=case.pedidos,
+        red_flags=case.red_flags,
+        vulnerabilidade_autor=case.vulnerabilidade_autor,
+        subsidios=case.subsidios or {},
+        body_text=case.case_text,
+    )
+
+
+def _build_query_embedding(case: Case, metadata: SemanticIndexMetadata) -> np.ndarray | None:
+    existing_embedding = case.embedding or []
+    if existing_embedding and len(existing_embedding) == metadata.dimensions:
+        return normalize_embedding_array(np.asarray(existing_embedding, dtype=np.float32))
+
+    semantic_text = _semantic_query_text(case)
+    if not semantic_text:
+        return None
+
+    if metadata.provider.startswith("local") or metadata.provider.startswith("legacy"):
+        return build_local_embedding(semantic_text, dimensions=metadata.dimensions)
+
+    from app.llm.client import embed_peticao
+
+    vector = np.asarray(embed_peticao(semantic_text), dtype=np.float32)
+    if vector.size == metadata.dimensions:
+        return normalize_embedding_array(vector)
+    return build_local_embedding(semantic_text, dimensions=metadata.dimensions)
+
+
+def _normalized_semantic_score(score: float) -> float:
+    normalized = (score + 1.0) / 2.0
+    return round(max(0.0, min(1.0, normalized)), 4)
+
+
+def _semantic_candidates(case: Case, search_k: int) -> list[tuple[HistoricalCase, float]]:
+    index_bundle = load_semantic_index()
+    if index_bundle is None:
+        return []
+
+    index, metadata = index_bundle
+    cases = load_historical_cases()
+    if not cases:
+        return []
+
+    query_vector = _build_query_embedding(case, metadata)
+    if query_vector is None:
+        return []
+
+    limit = min(search_k, len(cases))
+    distances, indices = index.search(np.asarray([query_vector], dtype=np.float32), limit)
+
+    matches: list[tuple[HistoricalCase, float]] = []
+    for raw_score, raw_index in zip(distances[0], indices[0], strict=False):
+        candidate_index = int(raw_index)
+        if candidate_index < 0 or candidate_index >= len(cases):
+            continue
+        matches.append((cases[candidate_index], _normalized_semantic_score(float(raw_score))))
+    return matches
+
+
+def casos_similares(case: Case, k: int = 50) -> list[HistoricalCaseMatch]:
     lower_bound, upper_bound = _cause_bounds(case.valor_causa)
-    candidates = load_historical_cases()
+    semantic_matches = _semantic_candidates(case, search_k=max(k * 6, 60))
+    semantic_score_map = {item.source_index: score for item, score in semantic_matches}
 
-    if lower_bound is not None and upper_bound is not None:
-        filtered = [
-            item
-            for item in candidates
-            if item.valor_causa is not None and lower_bound <= item.valor_causa <= upper_bound
-        ]
-        if filtered:
-            candidates = tuple(filtered)
+    if semantic_matches:
+        candidates = [item for item, _ in semantic_matches]
+        if lower_bound is not None and upper_bound is not None:
+            filtered = [
+                item
+                for item in candidates
+                if item.valor_causa is not None and lower_bound <= item.valor_causa <= upper_bound
+            ]
+            if len(filtered) >= min(k, 10):
+                candidates = filtered
+    else:
+        candidates = list(load_historical_cases())
+        if lower_bound is not None and upper_bound is not None:
+            filtered = [
+                item
+                for item in candidates
+                if item.valor_causa is not None and lower_bound <= item.valor_causa <= upper_bound
+            ]
+            if filtered:
+                candidates = filtered
 
-    ordered = sorted(candidates, key=lambda item: _score_similarity(case, item))
+    ranked: list[HistoricalCaseMatch] = []
+    for item in candidates:
+        structured_score = _structured_similarity(case, item)
+        semantic_score = semantic_score_map.get(item.source_index)
+        if semantic_score is None:
+            similarity = structured_score
+        else:
+            similarity = round((semantic_score * 0.65) + (structured_score * 0.35), 4)
+
+        ranked.append(
+            HistoricalCaseMatch(
+                **asdict(item),
+                similarity_score=similarity,
+            )
+        )
+
+    ordered = sorted(
+        ranked,
+        key=lambda item: (
+            -item.similarity_score,
+            _value_distance(case, item),
+            item.source_index,
+        ),
+    )
     return ordered[:k]
 
 
@@ -166,7 +450,7 @@ def _percentile(values: list[Decimal], percentile: Decimal) -> Decimal:
     return lower_value + (upper_value - lower_value) * fraction
 
 
-def stats_similares(casos: list[HistoricalCase]) -> SimilarCasesStats:
+def stats_similares(casos: Sequence[HistoricalCase]) -> SimilarCasesStats:
     if not casos:
         return SimilarCasesStats(
             prob_vitoria=0.0,
@@ -192,6 +476,8 @@ def summarize_case_history(case: Case, k: int = 5) -> dict[str, object]:
     stats = stats_similares(similares)
     return {
         "casos_similares_ids": [item.case_id for item in similares],
+        "casos_similares": [_serialize_match(item) for item in similares],
+        "total_casos_similares": len(similares),
         "stats": {
             "prob_vitoria": stats.prob_vitoria,
             "custo_medio_defesa": str(stats.custo_medio_defesa),
@@ -209,5 +495,20 @@ def summarize_mock_file(mock_file: Path, k: int = 5) -> dict[str, object]:
         valor_causa=Decimal(str(payload.get("valor_causa"))) if payload.get("valor_causa") is not None else None,
         autor_nome=payload.get("autor_nome"),
         status=payload.get("status", "analyzed"),
+        alegacoes=list(payload.get("alegacoes") or []),
+        pedidos=list(payload.get("pedidos") or []),
+        red_flags=list(payload.get("red_flags") or []),
+        vulnerabilidade_autor=payload.get("vulnerabilidade_autor"),
+        indicio_fraude=float(payload.get("indicio_fraude") or 0.0),
+        forca_narrativa_autor=float(payload.get("forca_narrativa_autor") or 0.0),
+        subsidios=dict(payload.get("subsidios") or {}),
+        case_text=build_case_document_text(
+            numero_processo=payload.get("numero_processo"),
+            valor_causa=payload.get("valor_causa"),
+            alegacoes=list(payload.get("alegacoes") or []),
+            pedidos=list(payload.get("pedidos") or []),
+            body_text="\n".join(payload.get("alegacoes") or []),
+            subsidios=dict(payload.get("subsidios") or {}),
+        ),
     )
     return summarize_case_history(case, k=k)

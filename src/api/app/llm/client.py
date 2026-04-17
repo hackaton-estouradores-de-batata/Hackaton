@@ -7,6 +7,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from app.analytics.semantic import build_local_embedding_list
 from app.core.config import get_settings
 
 
@@ -33,7 +34,7 @@ def _clean_json_payload(raw_text: str) -> dict[str, Any]:
     return json.loads(payload)
 
 
-def _chat_json(model: str, prompt_name: str, user_payload: str) -> dict[str, Any] | None:
+def chat_json_prompt(model: str, prompt_name: str, user_payload: str) -> dict[str, Any] | None:
     client = get_openai_client()
     if client is None:
         return None
@@ -183,13 +184,13 @@ def heuristic_extract_features(
 
 def extract_autos_structured(text: str) -> dict[str, Any]:
     settings = get_settings()
-    payload = _chat_json(settings.extract_model, "extract_autos.txt", text)
+    payload = chat_json_prompt(settings.extract_model, "extract_autos.txt", text)
     return payload if payload else heuristic_extract_autos(text)
 
 
 def extract_subsidios_structured(text: str) -> dict[str, Any]:
     settings = get_settings()
-    payload = _chat_json(settings.extract_model, "extract_subsidios.txt", text)
+    payload = chat_json_prompt(settings.extract_model, "extract_subsidios.txt", text)
     return payload if payload else heuristic_extract_subsidios(text)
 
 
@@ -207,7 +208,7 @@ def extract_features_structured(
         },
         ensure_ascii=False,
     )
-    payload = _chat_json(settings.analysis_model, "extract_features.txt", user_payload)
+    payload = chat_json_prompt(settings.analysis_model, "extract_features.txt", user_payload)
     return payload if payload else heuristic_extract_features(autos_text, autos_data, subsidios_data)
 
 
@@ -215,16 +216,13 @@ def embed_peticao(text: str) -> list[float]:
     client = get_openai_client()
     settings = get_settings()
     if client is not None:
-        embedding = client.embeddings.create(
-            model=settings.embedding_model,
-            input=text[:20000],
-        )
-        return embedding.data[0].embedding
+        try:
+            embedding = client.embeddings.create(
+                model=settings.embedding_model,
+                input=text[:20000],
+            )
+            return embedding.data[0].embedding
+        except Exception:
+            pass
 
-    digest = hashlib.sha256(text.encode("utf-8")).digest()
-    vector: list[float] = []
-    seed = digest
-    while len(vector) < 128:
-        seed = hashlib.sha256(seed).digest()
-        vector.extend(round(byte / 255, 6) for byte in seed)
-    return vector[:128]
+    return build_local_embedding_list(text)

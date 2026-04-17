@@ -6,10 +6,12 @@ from collections import Counter
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+import duckdb
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT_DIR / "data" / "sentencas_60k.csv"
 PROCESSO_COLUMN = next(
-    name for name in CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",") if "processo" in name.lower()
+    name for name in CSV_PATH.open("r", encoding="utf-8", newline="").readline().strip().split(",") if "processo" in name.lower()
 )
 UF_COLUMN = "UF"
 ASSUNTO_COLUMN = "Assunto"
@@ -18,7 +20,7 @@ RESULTADO_MACRO_COLUMN = "Resultado macro"
 RESULTADO_MICRO_COLUMN = "Resultado micro"
 VALOR_CAUSA_COLUMN = "Valor da causa"
 VALOR_CONDENACAO_COLUMN = next(
-    name for name in CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",") if "indeniza" in name.lower()
+    name for name in CSV_PATH.open("r", encoding="utf-8", newline="").readline().strip().split(",") if "indeniza" in name.lower()
 )
 
 VALUE_BUCKETS = [
@@ -57,6 +59,84 @@ def most_common(counter: Counter[str], limit: int = 5) -> list[dict[str, int]]:
     return [{"value": value, "count": count} for value, count in counter.most_common(limit)]
 
 
+def _fetch_dicts(connection: duckdb.DuckDBPyConnection, query: str) -> list[dict[str, object]]:
+    result = connection.execute(query)
+    columns = [column[0] for column in result.description]
+    return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
+
+
+def _build_duckdb_views() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    connection = duckdb.connect(database=":memory:")
+    csv_path = str(CSV_PATH).replace("'", "''")
+    connection.execute(
+        f"""
+        CREATE OR REPLACE VIEW historical_cases AS
+        SELECT
+            "{PROCESSO_COLUMN}" AS numero_processo,
+            "{UF_COLUMN}" AS uf,
+            "{ASSUNTO_COLUMN}" AS assunto,
+            "{SUBASSUNTO_COLUMN}" AS sub_assunto,
+            "{RESULTADO_MACRO_COLUMN}" AS resultado_macro,
+            "{RESULTADO_MICRO_COLUMN}" AS resultado_micro,
+            TRY_CAST("{VALOR_CAUSA_COLUMN}" AS DOUBLE) AS valor_causa,
+            TRY_CAST("{VALOR_CONDENACAO_COLUMN}" AS DOUBLE) AS valor_condenacao
+        FROM read_csv_auto('{csv_path}', HEADER=TRUE, SAMPLE_SIZE=-1, ENCODING='utf-8');
+        """
+    )
+    connection.execute(
+        """
+        CREATE OR REPLACE VIEW historical_cases_enriched AS
+        SELECT
+            *,
+            CASE
+                WHEN valor_causa IS NULL THEN 'missing'
+                WHEN valor_causa < 5000 THEN '0-5k'
+                WHEN valor_causa < 15000 THEN '5k-15k'
+                WHEN valor_causa < 50000 THEN '15k-50k'
+                ELSE '50k+'
+            END AS faixa_valor,
+            CASE
+                WHEN lower(coalesce(resultado_macro, '')) IN ('êxito', 'exito', 'procedente', 'parcial procedencia', 'parcial procedência')
+                    OR lower(coalesce(resultado_micro, '')) IN ('êxito', 'exito', 'procedente', 'parcial procedencia', 'parcial procedência')
+                THEN 1.0
+                ELSE 0.0
+            END AS vitoria
+        FROM historical_cases;
+        """
+    )
+    connection.execute(
+        """
+        CREATE OR REPLACE VIEW taxa_vitoria_por_faixa AS
+        SELECT
+            faixa_valor,
+            COUNT(*) AS total_casos,
+            ROUND(AVG(vitoria), 4) AS prob_vitoria
+        FROM historical_cases_enriched
+        GROUP BY 1
+        ORDER BY 1;
+        """
+    )
+    connection.execute(
+        """
+        CREATE OR REPLACE VIEW valor_condenacao_medio_por_faixa AS
+        SELECT
+            faixa_valor,
+            COUNT(*) AS total_casos,
+            ROUND(AVG(valor_condenacao), 2) AS valor_condenacao_medio,
+            ROUND(quantile_cont(valor_condenacao, 0.25), 2) AS percentil_25,
+            ROUND(quantile_cont(valor_condenacao, 0.50), 2) AS percentil_50
+        FROM historical_cases_enriched
+        WHERE valor_condenacao IS NOT NULL
+        GROUP BY 1
+        ORDER BY 1;
+        """
+    )
+    taxa_vitoria = _fetch_dicts(connection, "SELECT * FROM taxa_vitoria_por_faixa;")
+    valor_medio = _fetch_dicts(connection, "SELECT * FROM valor_condenacao_medio_por_faixa;")
+    connection.close()
+    return taxa_vitoria, valor_medio
+
+
 def main() -> None:
     resultado_macro_counter: Counter[str] = Counter()
     resultado_micro_counter: Counter[str] = Counter()
@@ -70,7 +150,7 @@ def main() -> None:
     cause_values: list[Decimal] = []
     condenacao_values: list[Decimal] = []
 
-    with CSV_PATH.open("r", encoding="latin-1", newline="") as csv_file:
+    with CSV_PATH.open("r", encoding="utf-8", newline="") as csv_file:
         reader = csv.DictReader(csv_file)
 
         for row in reader:
@@ -119,6 +199,8 @@ def main() -> None:
             if valor_condenacao is not None:
                 condenacao_values.append(valor_condenacao)
 
+    taxa_vitoria, valor_medio = _build_duckdb_views()
+
     summary = {
         "csv_path": str(CSV_PATH),
         "row_count": row_count,
@@ -141,6 +223,10 @@ def main() -> None:
         "top_resultados_macro": most_common(resultado_macro_counter),
         "top_resultados_micro": most_common(resultado_micro_counter),
         "missing_fields": dict(missing_counter),
+        "duckdb_views": {
+            "taxa_vitoria_por_faixa": taxa_vitoria,
+            "valor_condenacao_medio_por_faixa": valor_medio,
+        },
     }
 
     print(json.dumps(summary, ensure_ascii=True, indent=2))

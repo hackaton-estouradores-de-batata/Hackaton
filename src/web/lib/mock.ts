@@ -7,7 +7,7 @@ export const MOCK_CASES: Case[] = [
     valor_causa: 15000,
     autor_nome: "Maria Aparecida Silva",
     autor_cpf: "123.456.789-00",
-    status: "pending",
+    status: "needs_review",
     data_distribuicao: "2024-09-15",
     alegacoes: ["Não reconhece contratação de empréstimo consignado de R$12.000"],
     pedidos: ["Dano moral", "Repetição de indébito"],

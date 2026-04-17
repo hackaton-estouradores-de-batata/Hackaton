@@ -13,10 +13,13 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = f"sqlite:///{(PROJECT_ROOT / 'data' / 'app.db').as_posix()}"
     case_storage_dir: str = str(PROJECT_ROOT / "data" / "processos_exemplo")
+    historical_csv_path: str = ""
     policy_path: str = str(PROJECT_ROOT / "policy" / "acordos_v1.yaml")
     openai_api_key: str = ""
     extract_model: str = "gpt-4o-mini"
     analysis_model: str = "gpt-4o"
+    judge_model: str = "gpt-5.4"
+    justify_model: str = "gpt-5.4"
     embedding_model: str = "text-embedding-3-large"
 
     model_config = SettingsConfigDict(

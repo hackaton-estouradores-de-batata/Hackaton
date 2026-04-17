@@ -1,6 +1,6 @@
 // Alinhado com src/api/app/schemas/ e src/api/app/models/
 
-export type CaseStatus = "pending" | "analyzed" | "decided" | "closed"
+export type CaseStatus = "pending" | "analyzed" | "needs_review" | "decided" | "closed"
 export type Decisao = "acordo" | "defesa"
 export type ResultadoNegociacao = "aceito" | "recusado" | "em_andamento"
 export type Sentenca = "procedente" | "improcedente" | "parcial"

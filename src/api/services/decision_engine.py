@@ -1,3 +1,8 @@
-from app.services.decision_engine import adjust_score, build_recommendation_payload, score_robustez_subsidios
+from app.services.decision_engine import (
+    adjust_score,
+    build_recommendation_payload,
+    calcular_ev,
+    score_robustez_subsidios,
+)
 
-__all__ = ["adjust_score", "build_recommendation_payload", "score_robustez_subsidios"]
+__all__ = ["adjust_score", "build_recommendation_payload", "calcular_ev", "score_robustez_subsidios"]
