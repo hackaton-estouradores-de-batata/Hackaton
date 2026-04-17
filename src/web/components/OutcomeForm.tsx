@@ -99,7 +99,17 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
             <ToggleGroup
               options={["acordo", "defesa"] as Decisao[]}
               value={decisao}
-              onChange={setDecisao}
+              onChange={(next) => {
+                setDecisao(next)
+                if (next === "acordo") {
+                  setSentenca(null)
+                  setCondenacao("")
+                  setCustos("")
+                  return
+                }
+                setResultado(null)
+                setValor("")
+              }}
               labels={{ acordo: "ACORDO", defesa: "DEFESA" }}
             />
             {decisao && (
@@ -143,7 +153,13 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
                 <ToggleGroup
                   options={["procedente", "improcedente", "parcial"] as Sentenca[]}
                   value={sentenca}
-                  onChange={setSentenca}
+                  onChange={(next) => {
+                    setSentenca(next)
+                    if (next === "improcedente") {
+                      setCondenacao("")
+                      setCustos("")
+                    }
+                  }}
                 />
               </div>
               {sentenca && sentenca !== "improcedente" && (
