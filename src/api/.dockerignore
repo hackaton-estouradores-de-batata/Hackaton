@@ -4,6 +4,9 @@ __pycache__/
 .git
 .env
 .env.*
+.python-version
+*.pyc
+*.pyo
 data/*.db
 data/*.sqlite
 data/processos_exemplo/

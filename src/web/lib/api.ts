@@ -2,13 +2,15 @@ import type { Case, Recommendation, OutcomePayload } from "./types"
 import { MOCK_CASES, MOCK_RECOMMENDATION } from "./mock"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
-const SERVER_API_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
+const SERVER_API_BASE_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
+
+function resolveUrl(path: string): string {
+  if (typeof window !== "undefined") return path
+  return `${SERVER_API_BASE_URL}${path}`
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const isServer = typeof window === "undefined"
-  const url = isServer ? `${SERVER_API_URL}${path}` : path
-
-  const res = await fetch(url, {
+  const res = await fetch(resolveUrl(path), {
     cache: "no-store",
     headers: { "Content-Type": "application/json" },
     ...options,
