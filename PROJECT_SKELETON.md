@@ -384,39 +384,39 @@ POST   /api/policy                       # Upload nova versão (admin)
 ### Sprint 0 — Setup (1h)
 - [x] Repo criado pelo template (estrutura `src/`, `data/`, `docs/` já existe)
 - [x] `.env.example` com OPENAI_API_KEY, DATABASE_URL já presente
-- [ ] Inicializar `src/web/` com Next.js 15 + Tailwind + shadcn/ui
-- [ ] Inicializar `src/api/` com FastAPI + pyproject.toml (uv)
-- [ ] Converter `sentencas_60k.xlsx` → `sentencas_60k.csv` (script único: `pandas read_excel → to_csv`)
+- [x] Inicializar `src/web/` com Next.js 15 + Tailwind + shadcn/ui
+- [x] Inicializar `src/api/` com FastAPI + pyproject.toml (uv)
+- [x] Converter `sentencas_60k.xlsx` → `sentencas_60k.csv` (script único: `pandas read_excel → to_csv`)
 
 ### Sprint 1 — Pipeline de extração + features ricas (3h)
-- [ ] Endpoint `POST /api/cases` aceita PDFs
-- [ ] Extractor lê PDF (`pdfplumber`) → texto
-- [ ] LLM (gpt-4o-mini) extrai JSON estruturado básico (autos + subsídios)
-- [ ] LLM (gpt-4o) extrai features ricas: `red_flags`, `vulnerabilidade_autor`, `indicio_fraude`, `forca_narrativa_autor`
-- [ ] Gera embedding da petição (`text-embedding-3-large`)
-- [ ] Persiste no DB (incluindo embedding)
-- [ ] **Checkpoint**: rodar nos 2 casos exemplo e validar JSON + features
+- [x] Endpoint `POST /api/cases` aceita PDFs
+- [x] Extractor lê PDF (`pdfplumber`) → texto
+- [x] LLM (gpt-4o-mini) extrai JSON estruturado básico (autos + subsídios)
+- [x] LLM (gpt-4o) extrai features ricas: `red_flags`, `vulnerabilidade_autor`, `indicio_fraude`, `forca_narrativa_autor`
+- [x] Gera embedding da petição (`text-embedding-3-large`)
+- [x] Persiste no DB (incluindo embedding)
+- [x] **Checkpoint**: rodar nos 2 casos exemplo e validar JSON + features
 
 ### Sprint 2 — Análise histórica + retrieval semântico (2h)
-- [ ] Script `analyze_historical.py` — EDA do CSV de 60k
-- [ ] Gerar embeddings dos 60k casos (batch) e persistir em FAISS/pgvector
-- [ ] DuckDB views: taxa_vitoria, valor_condenacao_medio por faixa
-- [ ] Função `casos_similares(caso, k=50) → list[Case]` via cosine + filtros
-- [ ] Função `stats_similares(casos) → {prob_vitoria, custo_medio, percentil_25}`
+- [x] Script `analyze_historical.py` — EDA do CSV de 60k
+- [x] Gerar embeddings dos 60k casos (batch) e persistir em FAISS/pgvector
+- [x] DuckDB views: taxa_vitoria, valor_condenacao_medio por faixa
+- [x] Função `casos_similares(caso, k=50) → list[Case]` via cosine + filtros
+- [x] Função `stats_similares(casos) → {prob_vitoria, custo_medio, percentil_25}`
 
 ### Sprint 3 — Motor de decisão + judge + valor (3h)
-- [ ] `policy/acordos_v1.yaml` inicial
-- [ ] `decision_engine.py` — score + ajustes por features ricas + EV sobre similares
-- [ ] `value_estimator.py` — percentil sobre similares + ajustes YAML
-- [ ] `judge.py` — LLM-as-judge revisa decisão e calibra confiança
-- [ ] `justifier.py` — LLM gera justificativa citando casos similares
-- [ ] Endpoint `GET /recommendation` orquestra tudo
-- [ ] **Checkpoint**: recomendação plausível + judge aprova + justificativa referencia casos similares
+- [x] `policy/acordos_v1.yaml` inicial
+- [x] `decision_engine.py` — score + ajustes por features ricas + EV sobre similares
+- [x] `value_estimator.py` — percentil sobre similares + ajustes YAML
+- [x] `judge.py` — LLM-as-judge revisa decisão e calibra confiança
+- [x] `justifier.py` — LLM gera justificativa citando casos similares
+- [x] Endpoint `GET /recommendation` orquestra tudo
+- [x] **Checkpoint**: recomendação plausível + judge aprova + justificativa referencia casos similares
 
 ### Sprint 4 — UI do advogado (3h)
-- [ ] Inbox de casos
+- [x] Inbox de casos
 - [ ] Tela de caso com PDFs + card de recomendação
-- [ ] Form de outcome (seguiu/divergiu + resultado)
+- [x] Form de outcome (seguiu/divergiu + resultado)
 - [ ] **Checkpoint**: gravar o vídeo de 2min aqui já é possível
 
 ### Sprint 5 — Dashboard do banco (2h)
