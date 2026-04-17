@@ -1,18 +1,23 @@
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BASE_DIR = Path(__file__).resolve().parents[2]
+API_DIR = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = API_DIR.parent.parent if API_DIR.parent.name == "src" else API_DIR
 
 
 class Settings(BaseSettings):
     app_name: str = "Hackathon UFMG 2026 API"
     app_env: str = "development"
-    database_url: str = "sqlite:///./data/app.db"
-    case_storage_dir: str = str(BASE_DIR / "data" / "processos_exemplo")
+    database_url: str = f"sqlite:///{(PROJECT_ROOT / 'data' / 'app.db').as_posix()}"
+    case_storage_dir: str = str(PROJECT_ROOT / "data" / "processos_exemplo")
+    policy_path: str = str(PROJECT_ROOT / "policy" / "acordos_v1.yaml")
     openai_api_key: str = ""
+    extract_model: str = "gpt-4o-mini"
+    analysis_model: str = "gpt-4o"
+    embedding_model: str = "text-embedding-3-large"
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -6,15 +6,18 @@ services:
     container_name: hackaton-api
     environment:
       APP_ENV: ${APP_ENV:-development}
-      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/app.db}
+      DATABASE_URL: sqlite:////workspace/data/app.db
+      CASE_STORAGE_DIR: /workspace/data/processos_exemplo
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      POLICY_PATH: /workspace/policy/acordos_v1.yaml
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
-      - ./src/api/app:/app/app
-      - ./src/api/data:/app/data
-      - ./arquivos_adicionais:/app/arquivos_adicionais:ro
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      - ./src/api:/app
+      - ./data:/workspace/data
+      - ./policy:/workspace/policy
+      - ./arquivos_adicionais:/workspace/arquivos_adicionais:ro
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
       interval: 10s

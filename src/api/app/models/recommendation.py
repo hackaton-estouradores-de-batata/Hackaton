@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -21,6 +21,10 @@ class Recommendation(Base):
     justificativa: Mapped[str | None] = mapped_column(Text())
     confianca: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     policy_version: Mapped[str] = mapped_column(String(16), default="v1", nullable=False)
+    regras_aplicadas: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    casos_similares_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    judge_concorda: Mapped[bool | None] = mapped_column(Boolean)
+    judge_observacao: Mapped[str | None] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

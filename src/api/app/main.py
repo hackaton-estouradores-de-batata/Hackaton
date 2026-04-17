@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import get_settings
-from app.db import engine
+from app.db import engine, ensure_sqlite_schema
 from app.models import case, outcome, recommendation  # noqa: F401
 from app.models.base import Base
 from app.routers.cases import router as cases_router
@@ -15,6 +15,7 @@ from app.routers.recommendations import router as recommendations_router
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_sqlite_schema()
     yield
 
 

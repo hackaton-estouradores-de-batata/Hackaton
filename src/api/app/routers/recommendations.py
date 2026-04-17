@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,6 +5,7 @@ from app.db import get_db
 from app.models.case import Case
 from app.models.recommendation import Recommendation
 from app.schemas.recommendation import RecommendationRead
+from app.services import build_recommendation_payload, load_policy
 
 router = APIRouter(prefix="/api/cases", tags=["recommendations"])
 
@@ -18,29 +17,10 @@ def _get_case_or_404(db: Session, case_id: str) -> Case:
     return case
 
 
-def _build_stub_recommendation(case: Case) -> RecommendationRead:
-    valor_base = Decimal(case.valor_causa or 3000)
-    valor_min = (valor_base * Decimal("0.15")).quantize(Decimal("0.01"))
-    valor_max = (valor_base * Decimal("0.25")).quantize(Decimal("0.01"))
-    decisao = "defesa" if (case.valor_causa or 0) <= 5000 else "acordo"
-
-    return RecommendationRead(
-        id=f"stub-{case.id}",
-        case_id=case.id,
-        decisao=decisao,
-        valor_sugerido_min=valor_min if decisao == "acordo" else None,
-        valor_sugerido_max=valor_max if decisao == "acordo" else None,
-        justificativa=(
-            "Recomendação inicial gerada para manter o fluxo do MVP em Docker enquanto "
-            "o motor estatístico e o judge ainda não foram implementados."
-        ),
-        confianca=0.61,
-        policy_version="v0-mvp",
-        regras_aplicadas=["MVP-01: fallback operacional"],
-        casos_similares_ids=[],
-        judge_concorda=True,
-        judge_observacao=None,
-    )
+def _normalize_recommendation(recommendation: Recommendation) -> Recommendation:
+    recommendation.regras_aplicadas = list(recommendation.regras_aplicadas or [])
+    recommendation.casos_similares_ids = list(recommendation.casos_similares_ids or [])
+    return recommendation
 
 
 @router.get("/{case_id}/recommendation", response_model=RecommendationRead)
@@ -54,6 +34,21 @@ def get_recommendation(case_id: str, db: Session = Depends(get_db)) -> Recommend
     )
 
     if recommendation is None:
-        return _build_stub_recommendation(case)
+        payload = build_recommendation_payload(
+            {
+                "valor_causa": case.valor_causa,
+                "valor_pedido_danos_morais": case.valor_pedido_danos_morais,
+                "red_flags": case.red_flags,
+                "vulnerabilidade_autor": case.vulnerabilidade_autor,
+                "indicio_fraude": case.indicio_fraude,
+                "forca_narrativa_autor": case.forca_narrativa_autor,
+                "subsidios": case.subsidios,
+            },
+            load_policy(),
+        )
+        recommendation = Recommendation(case_id=case.id, **payload)
+        db.add(recommendation)
+        db.commit()
+        db.refresh(recommendation)
 
-    return RecommendationRead.model_validate(recommendation)
+    return RecommendationRead.model_validate(_normalize_recommendation(recommendation))
