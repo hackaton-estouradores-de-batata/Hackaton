@@ -67,7 +67,14 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
         <Separator />
 
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Justificativa</p>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Justificativa</p>
+            {rec.policy_version.includes("hist") && (
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                com histórico
+              </Badge>
+            )}
+          </div>
           <p className="text-sm leading-relaxed">
             {rec.justificativa ?? "A justificativa detalhada será exibida quando a integração final do motor estiver disponível."}
           </p>

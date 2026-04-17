@@ -13,8 +13,11 @@ export interface Case {
   valor_causa: number | null
   autor_nome: string | null
   autor_cpf: string | null
+  uf?: string | null
+  assunto?: string | null
+  sub_assunto?: string | null
+  case_text?: string | null
   status: CaseStatus
-  // campos adicionados pela extração LLM (Sprint 1)
   data_distribuicao?: string
   alegacoes?: string[]
   pedidos?: string[]
@@ -23,6 +26,8 @@ export interface Case {
   vulnerabilidade_autor?: Vulnerabilidade | null
   indicio_fraude?: number
   forca_narrativa_autor?: number
+  inconsistencias_temporais?: string[]
+  subsidios?: Record<string, string | number | boolean | null> | null
   source_folder?: string
   created_at?: string
 }
@@ -51,5 +56,7 @@ export interface OutcomePayload {
   valor_proposto: number | null
   valor_acordado: number | null
   resultado_negociacao: ResultadoNegociacao | null
+  sentenca?: Sentenca | null
   valor_condenacao: number | null
+  custos_processuais?: number | null
 }

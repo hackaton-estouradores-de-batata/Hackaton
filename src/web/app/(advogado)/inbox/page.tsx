@@ -65,6 +65,7 @@ export default async function InboxPage() {
               <TableRow>
                 <TableHead>Nº do processo</TableHead>
                 <TableHead>Autor</TableHead>
+                <TableHead>Contexto</TableHead>
                 <TableHead className="text-right">Valor da causa</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead />
@@ -75,6 +76,14 @@ export default async function InboxPage() {
                 <TableRow key={c.id}>
                   <TableCell className="font-mono text-xs">{c.numero_processo ?? "—"}</TableCell>
                   <TableCell>{c.autor_nome ?? "—"}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <p className="text-sm">{c.assunto ?? "Assunto não identificado"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[c.uf, c.sub_assunto].filter(Boolean).join(" · ") || "Sem contexto adicional"}
+                      </p>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     {c.valor_causa != null
                       ? c.valor_causa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })

@@ -51,6 +51,7 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
   const [resultado, setResultado] = useState<ResultadoNegociacao | null>(null)
   const [sentenca, setSentenca] = useState<Sentenca | null>(null)
   const [condenacao, setCondenacao] = useState("")
+  const [custos, setCustos] = useState("")
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
 
@@ -65,7 +66,9 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
       valor_proposto: valor ? parseFloat(valor) : null,
       valor_acordado: resultado === "aceito" && valor ? parseFloat(valor) : null,
       resultado_negociacao: resultado,
+      sentenca,
       valor_condenacao: condenacao ? parseFloat(condenacao) : null,
+      custos_processuais: custos ? parseFloat(custos) : null,
     }
     await postOutcome(caseId, payload)
     setLoading(false)
@@ -78,7 +81,7 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
       <Card>
         <CardContent className="space-y-2 pt-6 text-center text-sm text-muted-foreground">
           <p>✓ Decisão registrada com sucesso.</p>
-          <p className="text-xs">Fluxo validado em modo mock e pronto para integração do backend.</p>
+          <p className="text-xs">Outcome salvo e pronto para alimentar aderência e efetividade.</p>
         </CardContent>
       </Card>
     )
@@ -144,16 +147,28 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
                 />
               </div>
               {sentenca && sentenca !== "improcedente" && (
-                <div>
-                  <label className="text-xs text-muted-foreground">Valor de condenação (R$)</label>
-                  <input
-                    type="number"
-                    value={condenacao}
-                    onChange={(e) => setCondenacao(e.target.value)}
-                    placeholder="0,00"
-                    className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Valor de condenação (R$)</label>
+                    <input
+                      type="number"
+                      value={condenacao}
+                      onChange={(e) => setCondenacao(e.target.value)}
+                      placeholder="0,00"
+                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Custos processuais (R$)</label>
+                    <input
+                      type="number"
+                      value={custos}
+                      onChange={(e) => setCustos(e.target.value)}
+                      placeholder="0,00"
+                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </>
               )}
             </>
           )}
