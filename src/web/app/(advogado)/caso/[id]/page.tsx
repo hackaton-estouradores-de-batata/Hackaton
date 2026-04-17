@@ -1,6 +1,7 @@
 import Link from "next/link"
-import { getCase, getRecommendation } from "@/lib/api"
+import { getCase, getCaseDocuments, getRecommendation } from "@/lib/api"
 import { CaseViewer } from "@/components/CaseViewer"
+import { CaseDocumentsViewer } from "@/components/CaseDocumentsViewer"
 import { RecommendationCard } from "@/components/RecommendationCard"
 import { OutcomeForm } from "@/components/OutcomeForm"
 
@@ -12,7 +13,7 @@ interface Props {
 
 export default async function CasoPage({ params }: Props) {
   const { id } = await params
-  const [caso, rec] = await Promise.all([getCase(id), getRecommendation(id)])
+  const [caso, rec, documents] = await Promise.all([getCase(id), getRecommendation(id), getCaseDocuments(id)])
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-6 py-8">
@@ -39,21 +40,7 @@ export default async function CasoPage({ params }: Props) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4">
           <CaseViewer caso={caso} />
-          <div className="rounded-2xl border bg-background p-5 shadow-sm">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Origem dos documentos</p>
-            {caso.source_folder ? (
-              <>
-                <p className="text-sm break-all">{caso.source_folder}</p>
-                <p className="mt-3 text-xs italic text-muted-foreground">
-                  Os PDFs deste caso foram persistidos nesse diretório pelo backend. A visualização direta pode ser ligada depois.
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                O backend ainda não informou um diretório de origem para este caso.
-              </p>
-            )}
-          </div>
+          <CaseDocumentsViewer documents={documents} />
         </div>
 
         <div className="space-y-4">

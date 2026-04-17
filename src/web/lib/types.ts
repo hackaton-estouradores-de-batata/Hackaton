@@ -70,3 +70,10 @@ export interface DashboardMetrics {
   judge_disagreement_pct: number
   has_enough_data: boolean
 }
+
+export interface CaseDocument {
+  name: string
+  display_name: string
+  category: string
+  url: string
+}

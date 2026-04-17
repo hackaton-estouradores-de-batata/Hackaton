@@ -1,4 +1,4 @@
-import type { Case, Recommendation } from "./types"
+import type { Case, CaseDocument, Recommendation } from "./types"
 
 export const MOCK_CASES: Case[] = [
   {
@@ -54,3 +54,24 @@ export const MOCK_RECOMMENDATION: Recommendation = {
   judge_observacao:
     "Indício de fraude (0.3) combinado com vulnerabilidade CDC sugere risco de condenação majorada. Considerar proposta no limite superior da faixa.",
 }
+
+export const MOCK_CASE_DOCUMENTS: CaseDocument[] = [
+  {
+    name: "01_autos_processo.pdf",
+    display_name: "Autos do processo",
+    category: "autos",
+    url: "/mock/sample.pdf",
+  },
+  {
+    name: "02_contrato.pdf",
+    display_name: "Contrato",
+    category: "subsidios",
+    url: "/mock/sample.pdf",
+  },
+  {
+    name: "03_extrato_bancario.pdf",
+    display_name: "Extrato bancário",
+    category: "subsidios",
+    url: "/mock/sample.pdf",
+  },
+]

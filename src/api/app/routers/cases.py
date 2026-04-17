@@ -5,13 +5,14 @@ import re
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db import get_db
 from app.models.case import Case
 from app.models.recommendation import Recommendation
-from app.schemas.case import CaseIngestResponse, CaseRead
+from app.schemas.case import CaseDocumentRead, CaseIngestResponse, CaseRead
 from app.services import (
     analyze_case_documents,
     apply_recommendation_payload,
@@ -48,6 +49,51 @@ def _get_case_or_404(db: Session, case_id: str) -> Case:
     if case is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso não encontrado.")
     return case
+
+
+def _get_case_directory(case: Case) -> Path:
+    if not case.source_folder:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Caso sem documentos persistidos.")
+    case_dir = Path(case.source_folder)
+    if not case_dir.exists() or not case_dir.is_dir():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diretório de documentos não encontrado.")
+    return case_dir
+
+
+def _list_case_documents(case: Case) -> list[CaseDocumentRead]:
+    case_dir = _get_case_directory(case)
+    documents: list[CaseDocumentRead] = []
+
+    for category in ("autos", "subsidios"):
+        category_dir = case_dir / category
+        if not category_dir.exists() or not category_dir.is_dir():
+            continue
+
+        for path in sorted(category_dir.glob("*.pdf")):
+            documents.append(
+                CaseDocumentRead(
+                    name=path.name,
+                    display_name=path.name.split("_", 1)[1] if "_" in path.name else path.name,
+                    category=category,
+                    url=f"/api/cases/{case.id}/documents/{path.name}",
+                )
+            )
+
+    return documents
+
+
+def _resolve_case_document(case: Case, document_name: str) -> Path:
+    safe_name = Path(document_name).name
+    if safe_name != document_name or not safe_name.lower().endswith(".pdf"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado.")
+
+    case_dir = _get_case_directory(case)
+    for category in ("autos", "subsidios"):
+        candidate = case_dir / category / safe_name
+        if candidate.exists() and candidate.is_file():
+            return candidate
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Documento não encontrado.")
 
 
 def _normalize_case(case: Case) -> Case:
@@ -197,6 +243,19 @@ def list_cases(db: Session = Depends(get_db)) -> list[Case]:
 @router.get("/{case_id}", response_model=CaseRead)
 def get_case(case_id: str, db: Session = Depends(get_db)) -> Case:
     return _normalize_case(_get_case_or_404(db, case_id))
+
+
+@router.get("/{case_id}/documents", response_model=list[CaseDocumentRead])
+def list_case_documents(case_id: str, db: Session = Depends(get_db)) -> list[CaseDocumentRead]:
+    case = _get_case_or_404(db, case_id)
+    return _list_case_documents(case)
+
+
+@router.get("/{case_id}/documents/{document_name}")
+def get_case_document(case_id: str, document_name: str, db: Session = Depends(get_db)) -> FileResponse:
+    case = _get_case_or_404(db, case_id)
+    document_path = _resolve_case_document(case, document_name)
+    return FileResponse(document_path, media_type="application/pdf", filename=document_path.name)
 
 
 @router.post("", response_model=CaseIngestResponse, status_code=status.HTTP_201_CREATED)

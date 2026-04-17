@@ -1,5 +1,5 @@
-import type { Case, Recommendation, OutcomePayload, DashboardMetrics } from "./types"
-import { MOCK_CASES, MOCK_RECOMMENDATION } from "./mock"
+import type { Case, Recommendation, OutcomePayload, DashboardMetrics, CaseDocument } from "./types"
+import { MOCK_CASES, MOCK_CASE_DOCUMENTS, MOCK_RECOMMENDATION } from "./mock"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
 const SERVER_API_BASE_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
@@ -37,6 +37,11 @@ export async function getRecommendation(id: string): Promise<Recommendation> {
 export async function postOutcome(id: string, data: OutcomePayload): Promise<{ ok: boolean }> {
   if (USE_MOCK) return { ok: true }
   return request(`/api/cases/${id}/outcome`, { method: "POST", body: JSON.stringify(data) })
+}
+
+export async function getCaseDocuments(id: string): Promise<CaseDocument[]> {
+  if (USE_MOCK) return MOCK_CASE_DOCUMENTS.map((doc) => ({ ...doc, name: `${id}-${doc.name}` }))
+  return request<CaseDocument[]>(`/api/cases/${id}/documents`)
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
