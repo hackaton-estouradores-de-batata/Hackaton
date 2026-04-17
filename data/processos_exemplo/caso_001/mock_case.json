@@ -1,0 +1,37 @@
+{
+  "id": "case-001",
+  "numero_processo": "0801234-56.2024.8.10.0001",
+  "valor_causa": 20000.0,
+  "autor_nome": "Maria das Gracas Silva Pereira",
+  "status": "analyzed",
+  "pedidos": [
+    "declaracao de inexistencia de debito",
+    "repeticao do indebito em dobro",
+    "indenizacao por danos morais",
+    "suspensao imediata dos descontos"
+  ],
+  "alegacoes": [
+    "A autora afirma que nunca contratou o emprestimo consignado discutido no processo.",
+    "Os descontos mensais no beneficio previdenciario comprometem verba alimentar.",
+    "O banco informou a existencia do contrato, mas a narrativa inicial contesta a anuencia da autora."
+  ],
+  "subsidios": {
+    "tem_contrato": true,
+    "tem_extrato": true,
+    "tem_comprovante_credito": true,
+    "tem_dossie": true,
+    "tem_demonstrativo": true,
+    "tem_laudo": true
+  },
+  "recommendation": {
+    "decisao": "defesa",
+    "valor_sugerido_min": null,
+    "valor_sugerido_max": null,
+    "justificativa": "Caso mockado com subsidios completos para desbloquear a UI do advogado e o dashboard sem depender do motor real.",
+    "confianca": 0.9,
+    "judge_concorda": true,
+    "regras_aplicadas": [
+      "DF-01"
+    ]
+  }
+}

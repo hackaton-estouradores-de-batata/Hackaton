@@ -1,0 +1,37 @@
+{
+  "id": "case-002",
+  "numero_processo": "0654321-09.2024.8.04.0001",
+  "valor_causa": 25000.0,
+  "autor_nome": "Jose Raimundo Oliveira Costa",
+  "status": "analyzed",
+  "pedidos": [
+    "declaracao de inexistencia de debito",
+    "repeticao do indebito em dobro",
+    "indenizacao por danos morais",
+    "suspensao imediata dos descontos"
+  ],
+  "alegacoes": [
+    "O autor afirma que jamais contratou ou autorizou a operacao de credito consignado.",
+    "A inicial trata o caso como fraude e aponta descontos indevidos sobre beneficio previdenciario.",
+    "A documentacao de defesa disponivel para o mock nao inclui contrato, extrato nem dossie."
+  ],
+  "subsidios": {
+    "tem_contrato": false,
+    "tem_extrato": false,
+    "tem_comprovante_credito": true,
+    "tem_dossie": false,
+    "tem_demonstrativo": true,
+    "tem_laudo": true
+  },
+  "recommendation": {
+    "decisao": "acordo",
+    "valor_sugerido_min": 8000.0,
+    "valor_sugerido_max": 12000.0,
+    "justificativa": "Caso mockado com lacunas documentais relevantes para desbloquear as telas que dependem de recomendacao de acordo.",
+    "confianca": 0.78,
+    "judge_concorda": true,
+    "regras_aplicadas": [
+      "AP-01"
+    ]
+  }
+}
