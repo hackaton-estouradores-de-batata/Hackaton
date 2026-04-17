@@ -121,7 +121,7 @@ hackathon-ufmg-2026-grupoN/
 ├── README.md
 ├── SETUP.md
 ├── .env.example
-├── apps/
+├── src/
 │   ├── web/
 │   └── api/
 ├── policy/
@@ -132,8 +132,8 @@ hackathon-ufmg-2026-grupoN/
 
 Organizacao conceitual:
 
-- `apps/web`: experiencia do advogado e dashboard do banco;
-- `apps/api`: pipeline, regras, servicos e APIs;
+- `src/web`: experiencia do advogado e dashboard do banco;
+- `src/api`: pipeline, regras, servicos e APIs;
 - `policy/`: politica versionada de acordos;
 - `data/`: casos de exemplo e base historica;
 - `docs/`: arquitetura, racional juridico, apresentacao e demo;
@@ -184,16 +184,22 @@ O banco acompanha metricas de aderencia a recomendacao, taxa de acordo, efetivid
 
 ## Status do Repositorio
 
-No estado atual, este repositorio contem a documentacao-base da proposta:
+No estado atual, este repositorio contem a documentacao-base da proposta e os primeiros artefatos da Sprint 0 da frente P2:
 
-- [README.md](/home/vitornms/Desktop/Hackaton/README.md)
-- [PROJECT_SKELETON.md](/home/vitornms/Desktop/Hackaton/PROJECT_SKELETON.md)
+- `README.md`
+- `PROJECT_SKELETON.md`
+- `TEAM.md`
+- `scripts/convert_sentencas_xlsx_to_csv.py`
+- `data/sentencas_60k.csv`
+- `data/processos_exemplo/caso_001/mock_case.json`
+- `data/processos_exemplo/caso_002/mock_case.json`
+- `docs/p2_sprint0_verification.md`
 
 A estrutura descrita acima representa o desenho alvo do MVP e da evolucao do projeto.
 
 ## Proximos Passos
 
-1. Estruturar monorepo com `apps/web` e `apps/api`.
+1. Estruturar monorepo com `src/web` e `src/api`.
 2. Definir schemas do dominio e contrato das APIs.
 3. Criar pipeline de ingestao e extracao dos PDFs.
 4. Implementar `policy/acordos_v1.yaml` com regras iniciais.
@@ -203,4 +209,4 @@ A estrutura descrita acima representa o desenho alvo do MVP e da evolucao do pro
 
 ## Referencia
 
-Este README foi reconstruido a partir do documento [PROJECT_SKELETON.md](/home/vitornms/Desktop/Hackaton/PROJECT_SKELETON.md), consolidando a proposta de produto, arquitetura e direcao tecnica do projeto.
+Este README foi reconstruido a partir do documento `PROJECT_SKELETON.md`, consolidando a proposta de produto, arquitetura e direcao tecnica do projeto.
