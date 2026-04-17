@@ -1,0 +1,10 @@
+Extraia dos subsidios um JSON com os campos:
+- tem_contrato
+- tem_extrato
+- tem_dossie
+- tem_comprovante
+- assinatura_validada
+- canal_contratacao
+- valor_emprestimo
+
+Responda apenas com JSON valido.

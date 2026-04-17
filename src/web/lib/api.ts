@@ -1,14 +1,15 @@
 import type { Case, Recommendation, OutcomePayload } from "./types"
 import { MOCK_CASES, MOCK_RECOMMENDATION } from "./mock"
 
-// Em Docker: rewrite do Next.js proxia /api/* → http://api:8000/api/*
-// Localmente: rewrite proxia para http://localhost:8000/api/*
-// Não precisa de NEXT_PUBLIC_ nem de URL hardcoded no cliente
-const BASE_URL = ""
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
+const SERVER_API_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const isServer = typeof window === "undefined"
+  const url = isServer ? `${SERVER_API_URL}${path}` : path
+
+  const res = await fetch(url, {
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     ...options,
   })

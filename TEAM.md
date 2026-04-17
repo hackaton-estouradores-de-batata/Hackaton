@@ -28,20 +28,16 @@
 
 ---
 
-## Sprint 1 — Pipeline de Extração + Features Ricas (3h) · P1
+## Sprint 1 — Implementação Base do Pipeline (3h) · P1
 
-> **Camada 1 da arquitetura de IA** — LLM nas pontas, extração máxima de sinal.
+> Seguir o esqueleto por responsabilidade (`routers` + `services` + `llm`), respeitando a estrutura real atual em `src/api/app/...`.
 
-| Tarefa | Arquivo |
-|--------|---------|
-| `POST /api/cases` — recebe multipart com PDFs, salva em `data/processos_exemplo/` | `src/api/routers/cases.py` |
-| Ler PDF com `pdfplumber` → texto limpo por seção | `src/api/services/extractor.py` |
-| Prompt `gpt-4o-mini` para autos → JSON básico: `numero_processo`, `valor_causa`, `alegacoes`, `pedidos`, `valor_danos_morais` | `src/api/llm/prompts/extract_autos.txt` |
-| Prompt `gpt-4o-mini` para subsídios → JSON: flags `tem_contrato/extrato/dossie/comprovante`, `assinatura_validada`, `canal_contratacao`, `valor_emprestimo` | `src/api/llm/prompts/extract_subsidios.txt` |
-| Prompt `gpt-4o` para **features ricas** (structured output): `red_flags` (list), `vulnerabilidade_autor`, `indicio_fraude` (0-1), `forca_narrativa_autor` (0-1), `inconsistencias_temporais` | `src/api/llm/prompts/extract_features.txt` |
-| `embed_peticao(texto)` — chama `text-embedding-3-large` e retorna vetor 3072d | `src/api/llm/client.py` |
-| Persistir caso completo no SQLite (inclui embedding como BLOB JSON) | `src/api/models/case.py` + `db.py` |
-| **Checkpoint**: rodar nos 2 casos exemplo, imprimir JSON + features + confirmar embedding salvo | — |
+| Etapa | Entrega |
+|------|---------|
+| 1. Ingestão | `POST /api/cases` recebe multipart, cria registro em `cases` e salva PDFs em `src/api/data/processos_exemplo/case_<id>/` |
+| 2. Extração local | `app/services/extractor.py` lê PDFs com `pdfplumber` e gera texto-base por arquivo |
+| 3. Contratos de IA | `app/llm/client.py` + prompts `extract_autos.txt`, `extract_subsidios.txt`, `extract_features.txt` preparados para a próxima iteração |
+| 4. Checkpoint | Subir API, enviar os 2 casos exemplo e validar: registro criado, arquivos persistidos e resposta da rota consistente |
 
 ---
 

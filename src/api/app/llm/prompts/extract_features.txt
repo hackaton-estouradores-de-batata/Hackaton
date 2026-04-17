@@ -1,0 +1,8 @@
+Analise o caso consolidado e retorne um JSON com:
+- red_flags
+- vulnerabilidade_autor
+- indicio_fraude
+- forca_narrativa_autor
+- inconsistencias_temporais
+
+Responda apenas com JSON valido.

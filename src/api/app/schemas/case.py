@@ -1,6 +1,15 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
+
+
+class CaseIngestResponse(BaseModel):
+    id: str
+    status: str
+    source_folder: str | None = None
+    autos_count: int
+    subsidios_count: int
 
 
 class CaseRead(BaseModel):
@@ -10,5 +19,7 @@ class CaseRead(BaseModel):
     autor_nome: str | None = None
     autor_cpf: str | None = None
     status: str
+    source_folder: str | None = None
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)

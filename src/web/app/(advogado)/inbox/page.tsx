@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { CaseStatus } from "@/lib/types"
 
+export const dynamic = "force-dynamic"
+
 const STATUS_LABEL: Record<CaseStatus, string> = {
   pending: "Aguardando",
   analyzed: "Analisado",

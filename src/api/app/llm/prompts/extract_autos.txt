@@ -1,0 +1,8 @@
+Extraia dos autos um JSON com os campos:
+- numero_processo
+- valor_causa
+- alegacoes
+- pedidos
+- valor_danos_morais
+
+Responda apenas com JSON valido.

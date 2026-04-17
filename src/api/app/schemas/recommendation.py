@@ -12,5 +12,9 @@ class RecommendationRead(BaseModel):
     justificativa: str | None = None
     confianca: float
     policy_version: str
+    regras_aplicadas: list[str] = []
+    casos_similares_ids: list[str] = []
+    judge_concorda: bool | None = None
+    judge_observacao: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

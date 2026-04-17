@@ -6,7 +6,10 @@ from app.core.config import get_settings
 from app.db import engine
 from app.models import case, outcome, recommendation  # noqa: F401
 from app.models.base import Base
+from app.routers.cases import router as cases_router
 from app.routers.health import router as health_router
+from app.routers.outcomes import router as outcomes_router
+from app.routers.recommendations import router as recommendations_router
 
 
 @asynccontextmanager
@@ -24,6 +27,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health_router)
+    app.include_router(cases_router)
+    app.include_router(recommendations_router)
+    app.include_router(outcomes_router)
 
     return app
 

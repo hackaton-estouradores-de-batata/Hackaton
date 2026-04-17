@@ -3,6 +3,14 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 
+class OutcomeCreate(BaseModel):
+    decisao_advogado: str
+    valor_proposto: Decimal | None = None
+    valor_acordado: Decimal | None = None
+    resultado_negociacao: str | None = None
+    valor_condenacao: Decimal | None = None
+
+
 class OutcomeRead(BaseModel):
     id: str
     case_id: str
