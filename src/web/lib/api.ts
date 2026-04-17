@@ -1,4 +1,4 @@
-import type { Case, Recommendation, OutcomePayload } from "./types"
+import type { Case, Recommendation, OutcomePayload, DashboardMetrics } from "./types"
 import { MOCK_CASES, MOCK_RECOMMENDATION } from "./mock"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
@@ -37,4 +37,19 @@ export async function getRecommendation(id: string): Promise<Recommendation> {
 export async function postOutcome(id: string, data: OutcomePayload): Promise<{ ok: boolean }> {
   if (USE_MOCK) return { ok: true }
   return request(`/api/cases/${id}/outcome`, { method: "POST", body: JSON.stringify(data) })
+}
+
+export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+  if (USE_MOCK) {
+    return {
+      total_cases: MOCK_CASES.length,
+      total_recommendations: MOCK_CASES.length,
+      total_outcomes: 1,
+      adherence_pct: 100,
+      agreement_acceptance_pct: 100,
+      judge_disagreement_pct: 0,
+      has_enough_data: true,
+    }
+  }
+  return request<DashboardMetrics>("/api/dashboard/metrics")
 }

@@ -1,4 +1,8 @@
-export default function DashboardPage() {
+import { getDashboardMetrics } from "@/lib/api"
+
+export default async function DashboardPage() {
+  const metrics = await getDashboardMetrics()
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-6">
@@ -9,13 +13,41 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <MetricCard title="Aderência à política" value="—" sub="% advogados seguiram recomendação" />
-        <MetricCard title="Economia estimada" value="—" sub="Recomendado vs. realizado" />
-        <MetricCard title="Disagreement IA" value="—" sub="Taxa de divergência do judge" />
+        <MetricCard
+          title="Aderência à política"
+          value={`${metrics.adherence_pct.toFixed(1)}%`}
+          sub="% advogados seguiram recomendação"
+        />
+        <MetricCard
+          title="Acordos aceitos"
+          value={`${metrics.agreement_acceptance_pct.toFixed(1)}%`}
+          sub="% dos outcomes com negociação aceita"
+        />
+        <MetricCard
+          title="Disagreement IA"
+          value={`${metrics.judge_disagreement_pct.toFixed(1)}%`}
+          sub="Taxa de divergência do judge"
+        />
       </div>
 
-      <div className="rounded-lg border bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-        Gráficos de aderência, efetividade e qualidade da IA serão implementados no Sprint 5.
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <MetricCard title="Casos" value={String(metrics.total_cases)} sub="Total de casos cadastrados" />
+        <MetricCard
+          title="Recomendações"
+          value={String(metrics.total_recommendations)}
+          sub="Total de recomendações geradas"
+        />
+        <MetricCard
+          title="Outcomes"
+          value={String(metrics.total_outcomes)}
+          sub="Total de desfechos registrados"
+        />
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-6 text-sm text-muted-foreground">
+        {metrics.has_enough_data
+          ? "Dashboard parcial da Sprint 5 ativo com métricas reais agregadas do backend."
+          : "Ainda não há dados suficientes para análises robustas; os cards acima refletem o estado atual do sistema."}
       </div>
     </div>
   )

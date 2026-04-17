@@ -7,6 +7,7 @@ from app.db import engine, ensure_sqlite_schema
 from app.models import case, outcome, recommendation  # noqa: F401
 from app.models.base import Base
 from app.routers.cases import router as cases_router
+from app.routers.dashboard import router as dashboard_router
 from app.routers.health import router as health_router
 from app.routers.outcomes import router as outcomes_router
 from app.routers.recommendations import router as recommendations_router
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     app.include_router(cases_router)
     app.include_router(recommendations_router)
     app.include_router(outcomes_router)
+    app.include_router(dashboard_router)
 
     return app
 

@@ -60,3 +60,13 @@ export interface OutcomePayload {
   valor_condenacao: number | null
   custos_processuais?: number | null
 }
+
+export interface DashboardMetrics {
+  total_cases: number
+  total_recommendations: number
+  total_outcomes: number
+  adherence_pct: number
+  agreement_acceptance_pct: number
+  judge_disagreement_pct: number
+  has_enough_data: boolean
+}
