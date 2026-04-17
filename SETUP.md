@@ -40,6 +40,10 @@ curl http://127.0.0.1:8000/api/cases
 curl -I http://127.0.0.1:3000/inbox
 ```
 
+## Deploy automatico no Linux com GitHub Actions
+
+Consulte o guia completo em `docs/deploy_automatico_github.md`.
+
 ## Ingestao de um caso exemplo
 
 ```bash
