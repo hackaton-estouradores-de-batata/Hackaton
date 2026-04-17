@@ -7,22 +7,16 @@ from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 
+from app.core.config import PROJECT_ROOT
 from app.models.case import Case
 
-ROOT_DIR = Path(__file__).resolve().parents[4]
-CSV_PATH = ROOT_DIR / "data" / "sentencas_60k.csv"
-PROCESSO_COLUMN = next(
-    name for name in CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",") if "processo" in name.lower()
-)
+CSV_PATH = PROJECT_ROOT / "data" / "sentencas_60k.csv"
 UF_COLUMN = "UF"
 ASSUNTO_COLUMN = "Assunto"
 SUBASSUNTO_COLUMN = "Sub-assunto"
 RESULTADO_MACRO_COLUMN = "Resultado macro"
 RESULTADO_MICRO_COLUMN = "Resultado micro"
 VALOR_CAUSA_COLUMN = "Valor da causa"
-VALOR_CONDENACAO_COLUMN = next(
-    name for name in CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",") if "indeniza" in name.lower()
-)
 
 
 @dataclass(frozen=True)
@@ -71,7 +65,22 @@ def parse_decimal(value: str) -> Decimal | None:
 
 
 @lru_cache
+def _csv_columns() -> tuple[str, str]:
+    if not CSV_PATH.exists():
+        raise FileNotFoundError(f"Arquivo historico nao encontrado em {CSV_PATH}")
+
+    header = CSV_PATH.open("r", encoding="latin-1", newline="").readline().strip().split(",")
+    processo_column = next(name for name in header if "processo" in name.lower())
+    valor_condenacao_column = next(name for name in header if "indeniza" in name.lower())
+    return processo_column, valor_condenacao_column
+
+
+@lru_cache
 def load_historical_cases() -> tuple[HistoricalCase, ...]:
+    if not CSV_PATH.exists():
+        return tuple()
+
+    processo_column, valor_condenacao_column = _csv_columns()
     records: list[HistoricalCase] = []
 
     with CSV_PATH.open("r", encoding="latin-1", newline="") as csv_file:
@@ -79,14 +88,14 @@ def load_historical_cases() -> tuple[HistoricalCase, ...]:
         for row_index, row in enumerate(reader):
             records.append(
                 HistoricalCase(
-                    case_id=normalize_text(row[PROCESSO_COLUMN]),
+                    case_id=normalize_text(row[processo_column]),
                     uf=normalize_text(row[UF_COLUMN]),
                     assunto=normalize_text(row[ASSUNTO_COLUMN]),
                     sub_assunto=normalize_text(row[SUBASSUNTO_COLUMN]),
                     resultado_macro=normalize_text(row[RESULTADO_MACRO_COLUMN]),
                     resultado_micro=normalize_text(row[RESULTADO_MICRO_COLUMN]),
                     valor_causa=parse_decimal(row[VALOR_CAUSA_COLUMN]),
-                    valor_condenacao=parse_decimal(row[VALOR_CONDENACAO_COLUMN]),
+                    valor_condenacao=parse_decimal(row[valor_condenacao_column]),
                     source_index=row_index,
                 )
             )

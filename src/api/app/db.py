@@ -26,6 +26,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 SQLITE_SCHEMA_MIGRATIONS: dict[str, dict[str, str]] = {
     "cases": {
+        "uf": "VARCHAR(2)",
+        "assunto": "VARCHAR(255)",
+        "sub_assunto": "VARCHAR(255)",
+        "case_text": "TEXT",
         "data_distribuicao": "DATE",
         "alegacoes": "JSON",
         "pedidos": "JSON",
