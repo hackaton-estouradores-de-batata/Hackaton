@@ -1,4 +1,4 @@
-import type { Case, Recommendation, OutcomePayload, DashboardMetrics, CaseDocument } from "./types"
+import type { Case, Recommendation, OutcomePayload, DashboardMetrics, CaseDocument, CaseIngestResponse } from "./types"
 import { MOCK_CASES, MOCK_CASE_DOCUMENTS, MOCK_RECOMMENDATION } from "./mock"
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
@@ -10,10 +10,15 @@ function resolveUrl(path: string): string {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers)
+  if (!headers.has("Content-Type") && !(options?.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json")
+  }
+
   const res = await fetch(resolveUrl(path), {
     cache: "no-store",
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
   })
   if (!res.ok) throw new Error(`API ${res.status} — ${path}`)
   return res.json()
@@ -44,6 +49,22 @@ export async function getCaseDocuments(id: string): Promise<CaseDocument[]> {
   return request<CaseDocument[]>(`/api/cases/${id}/documents`)
 }
 
+export async function createCase(formData: FormData): Promise<CaseIngestResponse> {
+  if (USE_MOCK) {
+    return {
+      id: "mock-created-case",
+      status: "analyzed",
+      source_folder: "/mock/case-created",
+      autos_count: formData.getAll("autos_files").length,
+      subsidios_count: formData.getAll("subsidios_files").length,
+      uf: "MG",
+      assunto: "Empréstimo consignado",
+      sub_assunto: "Não reconhecimento da contratação",
+    }
+  }
+  return request<CaseIngestResponse>("/api/cases", { method: "POST", body: formData })
+}
+
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   if (USE_MOCK) {
     return {
@@ -56,5 +77,18 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       has_enough_data: true,
     }
   }
-  return request<DashboardMetrics>("/api/dashboard/metrics")
+
+  try {
+    return await request<DashboardMetrics>("/api/dashboard/metrics")
+  } catch {
+    return {
+      total_cases: 0,
+      total_recommendations: 0,
+      total_outcomes: 0,
+      adherence_pct: 0,
+      agreement_acceptance_pct: 0,
+      judge_disagreement_pct: 0,
+      has_enough_data: false,
+    }
+  }
 }

@@ -77,3 +77,14 @@ export interface CaseDocument {
   category: string
   url: string
 }
+
+export interface CaseIngestResponse {
+  id: string
+  status: string
+  source_folder: string | null
+  autos_count: number
+  subsidios_count: number
+  uf?: string | null
+  assunto?: string | null
+  sub_assunto?: string | null
+}

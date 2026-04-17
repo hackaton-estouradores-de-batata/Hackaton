@@ -27,7 +27,14 @@ export default async function InboxPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm md:w-[520px] md:grid-cols-4">
+          <div className="flex flex-col items-stretch gap-3 md:items-end">
+            <Link
+              href="/casos/novo"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
+            >
+              Novo caso
+            </Link>
+            <div className="grid grid-cols-2 gap-3 text-sm md:w-[520px] md:grid-cols-4">
             <div className="rounded-xl border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">Pendentes</p>
               <p className="mt-1 text-2xl font-semibold">{pendingCount}</p>
@@ -43,6 +50,7 @@ export default async function InboxPage() {
             <div className="rounded-xl border bg-muted/40 p-3">
               <p className="text-xs text-muted-foreground">Encerrados</p>
               <p className="mt-1 text-2xl font-semibold">{closedCount}</p>
+            </div>
             </div>
           </div>
         </div>

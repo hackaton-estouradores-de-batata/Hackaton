@@ -14,7 +14,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 }
 
 export function CaseDocumentsViewer({ documents }: Props) {
-  const [selectedName, setSelectedName] = useState(documents[0]?.name ?? null)
+  const [selectedName, setSelectedName] = useState<string | null>(null)
 
   const selectedDocument = documents.find((doc) => doc.name === selectedName) ?? documents[0] ?? null
 
