@@ -1,0 +1,9 @@
+.tools/
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.pyc
+src/api/.venv/
+src/api/data/*.db
+src/api/data/*.sqlite

@@ -1,0 +1,1 @@
+"""Hackathon UFMG API package."""
