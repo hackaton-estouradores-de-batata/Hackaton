@@ -175,9 +175,9 @@ const statusChipStyle: React.CSSProperties = {
 
 const titleStyle: React.CSSProperties = {
   margin: 0,
-  fontSize: "clamp(2.4rem, 5vw, 4.8rem)",
-  lineHeight: 1.02,
-  maxWidth: "15ch",
+  fontSize: "clamp(1.85rem, 3.4vw, 3.2rem)",
+  lineHeight: 1.08,
+  maxWidth: "20ch",
 }
 
 const leadStyle: React.CSSProperties = {
