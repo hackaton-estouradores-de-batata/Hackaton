@@ -10,3 +10,5 @@ src/api/data/*.sqlite
 data/app.db
 data/hackathon.db
 data/processos_exemplo/case_*/
+slides/node_modules/
+slides/.next/
