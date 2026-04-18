@@ -18,11 +18,11 @@ data/embeddings.npy
 data/embeddings_metadata.json
 
 # Config local de agentes de IA
-.claude/settings.local.json
-.openclaude/settings.local.json
+.claude/
+.openclaude/
 .codex
-.vscode/mcp.json
-
+.vscode/
+.
 # Estado local de ferramentas/agentes
 .vexp/daemon.log
 .vexp/daemon.pid
