@@ -3,7 +3,7 @@
 export type CaseStatus = "pending" | "analyzed" | "needs_review" | "decided" | "closed"
 export type Decisao = "acordo" | "defesa"
 export type ResultadoNegociacao = "aceito" | "recusado" | "em_andamento"
-export type Sentenca = "procedente" | "improcedente" | "parcial"
+export type Sentenca = "procedente" | "improcedente" | "parcial" | "extinto"
 export type Vulnerabilidade = "idoso" | "analfabeto" | "baixa_renda" | "nenhuma"
 
 export interface RecommendationPolicyTrace {

@@ -123,21 +123,23 @@ hackathon-ufmg-2026-grupoN/
 ├── .env.example
 ├── src/
 │   ├── web/
-│   └── api/
-├── policy/
+│   ├── api/
+│   ├── policy/
+│   └── scripts/
 ├── data/
 ├── docs/
-└── scripts/
+│   └── slides/
 ```
 
 Organizacao conceitual:
 
 - `src/web`: experiencia do advogado e dashboard do banco;
 - `src/api`: pipeline, regras, servicos e APIs;
-- `policy/`: politica versionada de acordos;
+- `src/policy/`: politica versionada de acordos;
 - `data/`: casos de exemplo e base historica;
 - `docs/`: arquitetura, racional juridico, apresentacao e demo;
-- `scripts/`: seed, analise historica e avaliacao da politica.
+- `docs/slides/`: app isolada da apresentacao;
+- `src/scripts/`: seed, analise historica e avaliacao da politica.
 
 ## Modelo de Dominio
 
@@ -189,7 +191,7 @@ No estado atual, este repositorio contem a documentacao-base da proposta e os pr
 - `README.md`
 - `PROJECT_SKELETON.md`
 - `TEAM.md`
-- `scripts/convert_sentencas_xlsx_to_csv.py`
+- `src/scripts/analyze_historical.py`
 - `data/sentencas_60k.csv`
 - `data/processos_exemplo/caso_001/mock_case.json`
 - `data/processos_exemplo/caso_002/mock_case.json`
@@ -202,7 +204,7 @@ A estrutura descrita acima representa o desenho alvo do MVP e da evolucao do pro
 1. Estruturar monorepo com `src/web` e `src/api`.
 2. Definir schemas do dominio e contrato das APIs.
 3. Criar pipeline de ingestao e extracao dos PDFs.
-4. Implementar `policy/acordos_v1.yaml` com regras iniciais.
+4. Implementar `src/policy/acordos_v1.yaml` com regras iniciais.
 5. Construir tela de recomendacao para o advogado.
 6. Adicionar dashboard com aderencia e efetividade.
 7. Validar a politica contra base historica e casos de exemplo.

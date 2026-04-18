@@ -1,0 +1,73 @@
+version: "1.1"
+description: "Politica inicial auditavel de acordos para o MVP do Hackathon UFMG 2026."
+
+defesa_forte:
+  - id: DF-01
+    nome: "Subsidios completos e robustos"
+    condicoes:
+      - tem_contrato: true
+      - tem_comprovante_credito: true
+      - tem_dossie: true
+      - assinatura_validada_dossie: true
+    acao: "defesa"
+    confianca: 0.90
+
+acordo_prioritario:
+  - id: AP-01
+    nome: "Subsidios frageis"
+    condicoes:
+      - tem_contrato: false
+      - OR:
+          - tem_comprovante_credito: false
+          - tem_dossie: false
+    acao: "acordo"
+    faixa_valor: "60-80%_valor_pedido"
+
+robustez:
+  thresholds:
+    defesa: 0.80
+    acordo: 0.40
+  pesos:
+    tem_contrato: 3
+    tem_extrato: 1
+    tem_dossie: 2
+    tem_comprovante: 2
+    assinatura_validada: 2
+
+features:
+  penalidade_vulnerabilidade: 0.10
+  penalidade_por_red_flag: 0.04
+  penalidade_narrativa: 0.12
+  limiar_indicio_fraude_alto: 0.70
+  bonus_indicio_fraude_alto: 0.15
+  penalidade_indicio_fraude: 0.00
+
+valor:
+  base: "percentil_25_historico_casos_similares"
+  teto: "min(valor_pedido_danos_morais, custo_processo_estimado)"
+  piso: "custas_judiciais_estimadas"
+  percentual_min_valor_base: 0.15
+  percentual_max_valor_base: 0.25
+  piso_minimo: 1500.00
+  fatores_ajuste:
+    - id: VAL-CORRESP
+      se: "canal_contratacao == 'correspondente'"
+      multiplicador: 1.15
+    - id: VAL-IDOSO
+      se: "autor_idoso"
+      multiplicador: 1.10
+    - id: VAL-FRAUDE-ALTA
+      se: "indicio_fraude >= 0.70"
+      multiplicador: 0.95
+
+ev:
+  prob_vitoria_interpretacao: "taxa_improcedente"
+  custo_esperado_defesa_default: 2500.00
+  estrategia_score_baixo: "acordo_agressivo"
+  estrategia_score_intermediario: "acordo_conservador"
+  estrategia_score_alto: "defesa"
+
+alcada:
+  aprovacao_automatica_ate: 5000.00
+  requer_aprovacao_gestor_ate: 20000.00
+  requer_aprovacao_diretoria_acima: 20000.00

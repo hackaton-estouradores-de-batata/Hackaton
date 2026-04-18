@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     app_name: str = "Hackathon UFMG 2026 API"
     app_env: str = "development"
     database_url: str = f"sqlite:///{(PROJECT_ROOT / 'data' / 'app.db').as_posix()}"
-    case_storage_dir: str = str(PROJECT_ROOT / "data" / "processos_exemplo")
+    case_storage_dir: str = str(PROJECT_ROOT / "data" / "processos_cadastrados")
     historical_csv_path: str = ""
-    policy_path: str = str(PROJECT_ROOT / "policy" / "acordos_v1.yaml")
+    policy_path: str = str(PROJECT_ROOT / "src" / "policy" / "acordos_v1.yaml")
     openai_api_key: str = ""
     extract_model: str = "gpt-5.4-mini"
     analysis_model: str = "gpt-5.4"

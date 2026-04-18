@@ -27,6 +27,10 @@ def create_outcome(case_id: str, payload: OutcomeCreate, db: Session = Depends(g
         .first()
     )
 
+    sentenca = payload.sentenca
+    if payload.decisao_advogado == "acordo" and payload.resultado_negociacao == "aceito":
+        sentenca = "acordo"
+
     outcome = Outcome(
         case_id=case.id,
         recommendation_id=recommendation.id if recommendation else None,
@@ -35,7 +39,7 @@ def create_outcome(case_id: str, payload: OutcomeCreate, db: Session = Depends(g
         valor_proposto=payload.valor_proposto,
         valor_acordado=payload.valor_acordado,
         resultado_negociacao=payload.resultado_negociacao,
-        sentenca=payload.sentenca,
+        sentenca=sentenca,
         valor_condenacao=payload.valor_condenacao,
         custos_processuais=payload.custos_processuais,
     )

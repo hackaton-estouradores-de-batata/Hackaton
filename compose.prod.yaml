@@ -9,13 +9,13 @@ services:
     environment:
       APP_ENV: production
       DATABASE_URL: ${DATABASE_URL:-sqlite:////workspace/data/app.db}
-      CASE_STORAGE_DIR: ${CASE_STORAGE_DIR:-/workspace/data/processos_exemplo}
-      POLICY_PATH: ${POLICY_PATH:-/workspace/policy/acordos_v1.yaml}
+      CASE_STORAGE_DIR: ${CASE_STORAGE_DIR:-/workspace/data/processos_cadastrados}
+      POLICY_PATH: ${POLICY_PATH:-/workspace/src/policy/acordos_v1.yaml}
     ports:
       - "${API_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
     volumes:
       - ./data:/workspace/data
-      - ./policy:/workspace/policy
+      - ./src/policy:/workspace/src/policy
       - ./arquivos_adicionais:/workspace/arquivos_adicionais:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     healthcheck:

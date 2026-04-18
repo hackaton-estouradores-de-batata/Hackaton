@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { formatBRL } from "@/lib/utils"
+import { formatAppliedRuleLabel, formatBRL, formatMatrixLabel, formatTechnicalLabel } from "@/lib/utils"
 import type { Recommendation } from "@/lib/types"
 
 const DOCUMENT_LABELS: Record<string, string> = {
@@ -18,7 +18,7 @@ const DOCUMENT_LABELS: Record<string, string> = {
 }
 
 function formatDocumentLabel(value: string): string {
-  return DOCUMENT_LABELS[value] ?? value.replaceAll("_", " ")
+  return DOCUMENT_LABELS[value] ?? formatTechnicalLabel(value)
 }
 
 export function RecommendationCard({ rec }: { rec: Recommendation }) {
@@ -95,8 +95,8 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
                 <FileStack className="h-4 w-4 text-primary" />
                 Trace V5
               </p>
-              <Badge variant="secondary" className="text-[10px] uppercase tracking-widest bg-primary/10 text-primary">
-                {trace.matriz_escolhida}
+              <Badge variant="secondary" className="text-[10px] tracking-wide bg-primary/10 text-primary">
+                {formatMatrixLabel(trace.matriz_escolhida)}
               </Badge>
             </div>
 
@@ -115,7 +115,7 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
               </div>
               <div className="rounded-xl border border-border/40 bg-background/50 p-3">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Subtipo</p>
-                <p className="mt-1 text-lg font-semibold capitalize">{trace.sub_estatistico}</p>
+                <p className="mt-1 text-lg font-semibold">{formatTechnicalLabel(trace.sub_estatistico)}</p>
               </div>
             </div>
 
@@ -161,7 +161,7 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
             <div className="flex flex-wrap gap-2">
               {rec.regras_aplicadas.map((r) => (
                 <Badge key={r} variant="outline" className="bg-background/50 text-xs font-medium border-primary/20 text-foreground">
-                  {r}
+                  {formatAppliedRuleLabel(r)}
                 </Badge>
               ))}
             </div>

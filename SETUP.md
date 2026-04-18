@@ -26,14 +26,14 @@ docker compose ps
 Gere o índice histórico e rode a análise do CSV dentro do container `api`.
 
 ```bash
-docker compose run --rm -v "$PWD:/workspace" api python /workspace/scripts/build_embeddings.py --provider local
-docker compose run --rm -v "$PWD:/workspace" api python /workspace/scripts/analyze_historical.py
+docker compose run --rm -v "$PWD:/workspace" api python /workspace/src/scripts/build_embeddings.py --provider local
+docker compose run --rm -v "$PWD:/workspace" api python /workspace/src/scripts/analyze_historical.py
 ```
 
 Se quiser gerar embeddings reais com a OpenAI:
 
 ```bash
-docker compose run --rm -v "$PWD:/workspace" api python /workspace/scripts/build_embeddings.py --provider openai
+docker compose run --rm -v "$PWD:/workspace" api python /workspace/src/scripts/build_embeddings.py --provider openai
 ```
 
 ## Smoke tests
