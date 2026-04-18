@@ -14,6 +14,7 @@ class CaseIngestResponse(BaseModel):
     uf: str | None = None
     assunto: str | None = None
     sub_assunto: str | None = None
+    processing_status: dict[str, Any] | None = None
 
 
 class CaseRead(BaseModel):
@@ -37,6 +38,7 @@ class CaseRead(BaseModel):
     inconsistencias_temporais: list[str] = []
     subsidios: dict[str, Any] | None = None
     status: str
+    processing_status: dict[str, Any] | None = None
     source_folder: str | None = None
     created_at: datetime | None = None
 

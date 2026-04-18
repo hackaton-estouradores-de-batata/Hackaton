@@ -12,6 +12,7 @@ interface Props {
   caseId: string
   recomendacao?: Decisao | null
   caseStatus?: CaseStatus
+  processingState?: string | null
   onSubmitted?: () => void
 }
 
@@ -83,7 +84,7 @@ function InputField({ label, value, onChange, placeholder, prefix }: InputFieldP
   )
 }
 
-export function OutcomeForm({ caseId, recomendacao, caseStatus, onSubmitted }: Props) {
+export function OutcomeForm({ caseId, recomendacao, caseStatus, processingState, onSubmitted }: Props) {
   const router = useRouter()
   const [decisao, setDecisao] = useState<Decisao | null>(null)
   const [valor, setValor] = useState("")
@@ -98,6 +99,11 @@ export function OutcomeForm({ caseId, recomendacao, caseStatus, onSubmitted }: P
 
   const seguiu = recomendacao ? decisao === recomendacao : null
   const alreadyRegistered = caseStatus === "decided" || caseStatus === "closed"
+  const processing =
+    caseStatus === "pending" ||
+    processingState === "queued" ||
+    processingState === "running"
+  const blockedByFailure = processingState === "failed" && !recomendacao
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -146,6 +152,46 @@ export function OutcomeForm({ caseId, recomendacao, caseStatus, onSubmitted }: P
             {isRefreshing && (
               <p className="text-xs font-medium text-primary">Atualizando o painel do caso...</p>
             )}
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (processing) {
+    return (
+      <Card className="border-none bg-transparent shadow-none">
+        <CardContent className="space-y-4 py-8">
+          <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">Aguardando conclusao da analise</p>
+                <p className="text-muted-foreground">
+                  O outcome fica disponivel quando o pipeline terminar e a recomendacao do caso estiver pronta para revisao.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (blockedByFailure) {
+    return (
+      <Card className="border-none bg-transparent shadow-none">
+        <CardContent className="space-y-4 py-8">
+          <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">Analise interrompida</p>
+                <p className="text-muted-foreground">
+                  O pipeline nao concluiu a recomendacao deste caso. Revise o processamento antes de registrar o outcome.
+                </p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

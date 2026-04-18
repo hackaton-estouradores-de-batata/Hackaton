@@ -40,6 +40,7 @@ class Case(Base):
     autos_text: Mapped[str | None] = mapped_column(Text())
     subsidios_text: Mapped[str | None] = mapped_column(Text())
     status: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    processing_status: Mapped[dict | None] = mapped_column(JSON)
     source_folder: Mapped[str | None] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -72,6 +72,7 @@ SQLITE_SCHEMA_MIGRATIONS: dict[str, dict[str, str]] = {
         "embedding_source": "VARCHAR(64)",
         "autos_text": "TEXT",
         "subsidios_text": "TEXT",
+        "processing_status": "JSON",
     },
     "recommendations": {
         "regras_aplicadas": "JSON",
@@ -79,6 +80,7 @@ SQLITE_SCHEMA_MIGRATIONS: dict[str, dict[str, str]] = {
         "policy_trace": "JSON",
         "judge_concorda": "BOOLEAN",
         "judge_observacao": "TEXT",
+        "source_snapshot_signature": "VARCHAR(64)",
     },
     "outcomes": {
         "sentenca": "VARCHAR(32)",

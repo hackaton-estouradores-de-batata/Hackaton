@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -30,12 +31,24 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 
 
 def extract_texts_from_paths(pdf_paths: list[Path]) -> dict[str, str]:
+    if not pdf_paths:
+        return {}
+
+    if len(pdf_paths) == 1:
+        only_path = pdf_paths[0]
+        return {only_path.name: extract_text_from_pdf(only_path)}
+
     extracted: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=min(4, len(pdf_paths))) as executor:
+        future_to_path = {
+            executor.submit(extract_text_from_pdf, path): path
+            for path in pdf_paths
+        }
+        for future in as_completed(future_to_path):
+            path = future_to_path[future]
+            extracted[path.name] = future.result()
 
-    for path in pdf_paths:
-        extracted[path.name] = extract_text_from_pdf(path)
-
-    return extracted
+    return {path.name: extracted.get(path.name, "") for path in pdf_paths}
 
 
 def _bundle_documents(pdf_paths: list[Path]) -> dict[str, Any]:
@@ -48,19 +61,39 @@ def _bundle_documents(pdf_paths: list[Path]) -> dict[str, Any]:
     }
 
 
-def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path]) -> dict[str, Any]:
-    autos_bundle = _bundle_documents(autos_paths)
-    subsidios_bundle = _bundle_documents(subsidios_paths)
+def bundle_case_documents(autos_paths: list[Path], subsidios_paths: list[Path]) -> dict[str, Any]:
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        autos_future = executor.submit(_bundle_documents, autos_paths)
+        subsidios_future = executor.submit(_bundle_documents, subsidios_paths)
+        autos_bundle = autos_future.result()
+        subsidios_bundle = subsidios_future.result()
+
     document_inventory = build_document_inventory(
         {
             "autos": autos_bundle["texts_by_file"],
             "subsidios": subsidios_bundle["texts_by_file"],
         }
     )
+    return {
+        "autos_bundle": autos_bundle,
+        "subsidios_bundle": subsidios_bundle,
+        "document_inventory": document_inventory,
+    }
 
-    autos_data = extract_autos_structured(autos_bundle["combined_text"])
+
+def analyze_case_bundles(document_payload: dict[str, Any]) -> dict[str, Any]:
+    autos_bundle = document_payload["autos_bundle"]
+    subsidios_bundle = document_payload["subsidios_bundle"]
+    document_inventory = document_payload["document_inventory"]
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        autos_future = executor.submit(extract_autos_structured, autos_bundle["combined_text"])
+        subsidios_future = executor.submit(extract_subsidios_structured, subsidios_bundle["combined_text"])
+        autos_data = autos_future.result()
+        raw_subsidios_data = subsidios_future.result()
+
     subsidios_data = merge_subsidios_with_inventory(
-        extract_subsidios_structured(subsidios_bundle["combined_text"]),
+        raw_subsidios_data,
         document_inventory,
     )
     features_data = extract_features_structured(
@@ -118,3 +151,8 @@ def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path])
         "embedding_source": SEMANTIC_TEXT_STRATEGY if embedding_payload else None,
         "structured_features": extracted_features,
     }
+
+
+def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path]) -> dict[str, Any]:
+    bundled = bundle_case_documents(autos_paths, subsidios_paths)
+    return analyze_case_bundles(bundled)

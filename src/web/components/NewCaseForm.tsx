@@ -34,11 +34,8 @@ export function NewCaseForm() {
       subsidiosFiles.forEach((file) => formData.append("subsidios_files", file))
 
       const created = await createCase(formData)
-      setTimeout(() => {
-        setLoading(false)
-        router.push(`/caso/${created.id}`)
-        router.refresh()
-      }, 500)
+      router.push(`/caso/${created.id}`)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível criar o caso.")
       setLoading(false)
@@ -71,12 +68,12 @@ export function NewCaseForm() {
                 <Gavel className="h-10 w-10 text-primary animate-pulse" />
               </div>
             </div>
-            <h3 className="text-xl font-bold tracking-tight text-foreground mb-2">Analisando o Processo</h3>
+            <h3 className="text-xl font-bold tracking-tight text-foreground mb-2">Criando o Caso</h3>
             <p className="text-sm text-muted-foreground mb-6">
-              A nossa Inteligência Artificial está lendo os autos e extraindo os subsídios. Isso pode levar alguns instantes.
+              Os documentos ja foram enviados. O painel do caso sera aberto em seguida com a timeline dos agentes de IA.
             </p>
             <div className="flex items-center gap-2 text-primary text-sm font-medium">
-              <Loader2 className="h-4 w-4 animate-spin" /> Processando...
+              <Loader2 className="h-4 w-4 animate-spin" /> Enfileirando analise...
             </div>
           </div>
         </div>

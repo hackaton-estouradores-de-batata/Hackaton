@@ -29,6 +29,7 @@ from app.llm.client import (
     heuristic_extract_case_context,
 )
 from app.models.case import Case
+from app.models.recommendation import Recommendation
 from app.services.agreement_policy_v5 import (
     PolicyCaseInputV5,
     calculate_policy_v5,
@@ -36,12 +37,13 @@ from app.services.agreement_policy_v5 import (
     resolve_policy_backtest_cost,
 )
 from app.services import analyze_case_documents
+from app.services.case_processing import initialize_case_processing
 from app.services.case_maintenance import apply_analysis_to_case
 from app.services.case_sanitizer import repair_case, sanitize_cases
 from app.services.decision_engine import build_recommendation_payload
 from app.services.judge import review_recommendation_with_judge
 from app.services.justifier import generate_recommendation_justification
-from app.services.recommendation_pipeline import derive_case_status
+from app.services.recommendation_pipeline import build_recommendation_for_case, derive_case_status
 from main import app
 
 DATA_DIR = Path(get_settings().case_storage_dir).parent
@@ -823,6 +825,65 @@ def test_v5_missing_ped_returns_review_payload() -> None:
     assert payload["regras_aplicadas"] == ["V5-MISSING-PED"]
     assert payload["policy_trace"]["revisao_humana"] is True
     assert payload["casos_similares_ids"] == []
+
+
+def test_initialize_case_processing_creates_visible_timeline() -> None:
+    case = Case(id="case-processing", status="pending")
+
+    status = initialize_case_processing(case, autos_count=2, subsidios_count=3)
+
+    assert status["state"] == "queued"
+    assert status["current_stage"] == "document_read"
+    assert status["progress_pct"] == 12
+    assert case.status == "pending"
+    assert status["stages"][0]["id"] == "document_intake"
+    assert status["stages"][0]["status"] == "completed"
+    assert status["stages"][0]["meta"]["autos_count"] == 2
+    assert status["stages"][0]["meta"]["subsidios_count"] == 3
+
+
+def test_recommendation_pipeline_reuses_payload_when_snapshot_is_unchanged() -> None:
+    case = Case(
+        id="case-reuse",
+        status="analyzed",
+        valor_causa=Decimal("20000"),
+        valor_pedido_danos_morais=Decimal("18000"),
+        uf="AM",
+        sub_assunto="Golpe",
+        subsidios={
+            "tem_contrato": False,
+            "tem_extrato": False,
+            "tem_dossie": False,
+            "tem_comprovante": True,
+            "tem_demonstrativo_evolucao_divida": True,
+            "tem_laudo_referenciado": True,
+            "documento_contraditorio": False,
+        },
+    )
+
+    with patch(
+        "app.services.recommendation_pipeline.review_recommendation_with_judge",
+        return_value={"concorda": True, "observacao": None, "confianca_calibrada": 0.64},
+    ), patch(
+        "app.services.recommendation_pipeline.generate_recommendation_justification",
+        return_value="Justificativa sintetica",
+    ):
+        first_payload, first_meta = build_recommendation_for_case(case)
+
+    recommendation = Recommendation(case_id=case.id, **first_payload)
+
+    with patch("app.services.recommendation_pipeline.build_recommendation_payload") as mocked_build:
+        reused_payload, reused_meta = build_recommendation_for_case(
+            case,
+            existing_recommendation=recommendation,
+        )
+
+    mocked_build.assert_not_called()
+    assert first_meta["reused"] is False
+    assert reused_meta["reused"] is True
+    assert reused_payload["decisao"] == first_payload["decisao"]
+    assert reused_payload["source_snapshot_signature"] == first_payload["source_snapshot_signature"]
+    assert reused_payload["justificativa"] == "Justificativa sintetica"
 
 
 def test_micro_result_classification_follows_v5_national_rules() -> None:

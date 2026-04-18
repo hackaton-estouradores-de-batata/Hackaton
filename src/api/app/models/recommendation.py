@@ -26,6 +26,7 @@ class Recommendation(Base):
     policy_trace: Mapped[dict | None] = mapped_column(JSON)
     judge_concorda: Mapped[bool | None] = mapped_column(Boolean)
     judge_observacao: Mapped[str | None] = mapped_column(Text())
+    source_snapshot_signature: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

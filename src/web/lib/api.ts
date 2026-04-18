@@ -1,4 +1,15 @@
-import type { Case, Recommendation, OutcomePayload, DashboardMetrics, DashboardAnalytics, CaseDocument, CaseIngestResponse } from "./types"
+import type {
+  Case,
+  Recommendation,
+  OutcomePayload,
+  DashboardMetrics,
+  DashboardAnalytics,
+  CaseDocument,
+  CaseIngestResponse,
+  CaseProcessingResult,
+  CaseProcessingStage,
+  CaseProcessingStatus,
+} from "./types"
 
 const SERVER_API_BASE_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
 
@@ -32,11 +43,54 @@ function toNumberOrNull(value: unknown): number | null {
   return null
 }
 
+function normalizeProcessingStage(stage: CaseProcessingStage): CaseProcessingStage {
+  return {
+    ...stage,
+    thought: typeof stage.thought === "string" ? stage.thought : null,
+    started_at: typeof stage.started_at === "string" ? stage.started_at : null,
+    completed_at: typeof stage.completed_at === "string" ? stage.completed_at : null,
+    duration_ms: toNumberOrNull(stage.duration_ms as unknown),
+    meta: stage.meta && typeof stage.meta === "object" && !Array.isArray(stage.meta) ? stage.meta : {},
+  }
+}
+
+function normalizeProcessingResult(result: CaseProcessingResult): CaseProcessingResult {
+  return {
+    ...result,
+    confianca: toNumberOrNull(result.confianca as unknown),
+    vej: toNumberOrNull(result.vej as unknown),
+    alvo: toNumberOrNull(result.alvo as unknown),
+    teto: toNumberOrNull(result.teto as unknown),
+    revisao_humana: typeof result.revisao_humana === "boolean" ? result.revisao_humana : null,
+  }
+}
+
+function normalizeProcessingStatus(processingStatus: CaseProcessingStatus | null | undefined): CaseProcessingStatus | null {
+  if (!processingStatus) return null
+
+  return {
+    ...processingStatus,
+    progress_pct: toNumberOrNull(processingStatus.progress_pct as unknown) ?? 0,
+    current_stage: typeof processingStatus.current_stage === "string" ? processingStatus.current_stage : null,
+    current_label: typeof processingStatus.current_label === "string" ? processingStatus.current_label : null,
+    summary: typeof processingStatus.summary === "string" ? processingStatus.summary : null,
+    error_message: typeof processingStatus.error_message === "string" ? processingStatus.error_message : null,
+    started_at: typeof processingStatus.started_at === "string" ? processingStatus.started_at : null,
+    completed_at: typeof processingStatus.completed_at === "string" ? processingStatus.completed_at : null,
+    stages: Array.isArray(processingStatus.stages) ? processingStatus.stages.map(normalizeProcessingStage) : [],
+    result:
+      processingStatus.result && typeof processingStatus.result === "object"
+        ? normalizeProcessingResult(processingStatus.result)
+        : null,
+  }
+}
+
 function normalizeCase(casePayload: Case): Case {
   return {
     ...casePayload,
     valor_causa: toNumberOrNull(casePayload.valor_causa as unknown),
     valor_pedido_danos_morais: toNumberOrNull(casePayload.valor_pedido_danos_morais as unknown),
+    processing_status: normalizeProcessingStatus(casePayload.processing_status),
   }
 }
 
@@ -86,7 +140,11 @@ export async function getCaseDocuments(id: string): Promise<CaseDocument[]> {
 }
 
 export async function createCase(formData: FormData): Promise<CaseIngestResponse> {
-  return request<CaseIngestResponse>("/api/cases", { method: "POST", body: formData })
+  const payload = await request<CaseIngestResponse>("/api/cases", { method: "POST", body: formData })
+  return {
+    ...payload,
+    processing_status: normalizeProcessingStatus(payload.processing_status),
+  }
 }
 
 export async function getDashboardAnalytics(uf?: string, subAssunto?: string): Promise<DashboardAnalytics> {

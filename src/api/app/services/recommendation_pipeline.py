@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from decimal import Decimal
 from typing import Any
@@ -38,8 +39,30 @@ def _json_signature(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
 
 
+def snapshot_signature(snapshot: dict[str, object]) -> str:
+    payload = _json_signature(snapshot).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def _decimal_str(value: Decimal | None) -> str | None:
     return str(value) if value is not None else None
+
+
+def _recommendation_payload_from_record(recommendation: Recommendation) -> dict[str, object]:
+    return {
+        "decisao": recommendation.decisao,
+        "valor_sugerido_min": recommendation.valor_sugerido_min,
+        "valor_sugerido_max": recommendation.valor_sugerido_max,
+        "justificativa": recommendation.justificativa,
+        "confianca": recommendation.confianca,
+        "policy_version": recommendation.policy_version,
+        "regras_aplicadas": list(recommendation.regras_aplicadas or []),
+        "casos_similares_ids": list(recommendation.casos_similares_ids or []),
+        "policy_trace": dict(recommendation.policy_trace or {}),
+        "judge_concorda": recommendation.judge_concorda,
+        "judge_observacao": recommendation.judge_observacao,
+        "source_snapshot_signature": recommendation.source_snapshot_signature,
+    }
 
 
 def _needs_llm_refresh(recommendation: Recommendation | None, payload: dict[str, object]) -> bool:
@@ -110,14 +133,26 @@ def build_recommendation_for_case(
     del history_k, policy
 
     current_snapshot = case_snapshot(case)
+    current_signature = snapshot_signature(current_snapshot)
+
+    if (
+        existing_recommendation is not None
+        and existing_recommendation.source_snapshot_signature == current_signature
+    ):
+        existing_payload = _recommendation_payload_from_record(existing_recommendation)
+        if not _needs_llm_refresh(existing_recommendation, existing_payload):
+            return existing_payload, {"snapshot_signature": current_signature, "reused": True}
+
     payload = build_recommendation_payload(current_snapshot)
+    payload["source_snapshot_signature"] = current_signature
 
     if _needs_llm_refresh(existing_recommendation, payload):
         payload = _apply_judge_and_justification(current_snapshot, payload)
     elif existing_recommendation is not None:
         payload = _reuse_existing_llm_fields(existing_recommendation, payload)
 
-    return payload, {}
+    payload["source_snapshot_signature"] = current_signature
+    return payload, {"snapshot_signature": current_signature, "reused": False}
 
 
 def derive_case_status(current_status: str, recommendation_payload: dict[str, object]) -> str:

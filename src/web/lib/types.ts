@@ -5,6 +5,44 @@ export type Decisao = "acordo" | "defesa"
 export type ResultadoNegociacao = "aceito" | "recusado" | "em_andamento"
 export type Sentenca = "procedente" | "improcedente" | "parcial" | "extinto"
 export type Vulnerabilidade = "idoso" | "analfabeto" | "baixa_renda" | "nenhuma"
+export type ProcessingState = "queued" | "running" | "completed" | "failed"
+export type ProcessingStageState = "pending" | "running" | "completed" | "failed"
+
+export interface CaseProcessingStage {
+  id: string
+  label: string
+  agent: string
+  kind: string
+  description: string
+  status: ProcessingStageState
+  thought: string | null
+  started_at: string | null
+  completed_at: string | null
+  duration_ms: number | null
+  meta: Record<string, string | number | boolean | null>
+}
+
+export interface CaseProcessingResult {
+  decisao?: Decisao | null
+  confianca?: number | null
+  vej?: number | null
+  alvo?: number | null
+  teto?: number | null
+  revisao_humana?: boolean | null
+}
+
+export interface CaseProcessingStatus {
+  state: ProcessingState
+  progress_pct: number
+  current_stage: string | null
+  current_label: string | null
+  summary: string | null
+  error_message: string | null
+  started_at: string | null
+  completed_at: string | null
+  stages: CaseProcessingStage[]
+  result?: CaseProcessingResult | null
+}
 
 export interface RecommendationPolicyTrace {
   mode: string
@@ -46,6 +84,7 @@ export interface Case {
   inconsistencias_temporais?: string[]
   subsidios?: Record<string, string | number | boolean | null> | null
   source_folder?: string
+  processing_status?: CaseProcessingStatus | null
   created_at?: string
 }
 
@@ -142,4 +181,5 @@ export interface CaseIngestResponse {
   uf?: string | null
   assunto?: string | null
   sub_assunto?: string | null
+  processing_status?: CaseProcessingStatus | null
 }

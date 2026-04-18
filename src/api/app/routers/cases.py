@@ -2,7 +2,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -11,12 +11,8 @@ from app.db import get_db
 from app.models.case import Case
 from app.schemas.case import CaseDocumentRead, CaseIngestResponse, CaseRead
 from app.services.case_normalization import normalize_case_record
-from app.services import (
-    analyze_case_documents,
-    apply_analysis_to_case,
-    canonical_case_directory,
-    upsert_case_recommendation,
-)
+from app.services import canonical_case_directory
+from app.services.case_processing import initialize_case_processing, process_case_in_background
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -130,6 +126,7 @@ def get_case_document(
 
 @router.post("", response_model=CaseIngestResponse, status_code=status.HTTP_201_CREATED)
 def create_case(
+    background_tasks: BackgroundTasks,
     numero_processo: str | None = Form(default=None),
     valor_causa: Decimal | None = Form(default=None),
     autor_nome: str | None = Form(default=None),
@@ -165,15 +162,11 @@ def create_case(
     subsidios_count = _persist_uploads(subsidios, case_dir / "subsidios")
 
     case.source_folder = str(case_dir)
+    initialize_case_processing(case, autos_count=autos_count, subsidios_count=subsidios_count)
     db.commit()
+    db.refresh(case)
 
-    analysis = analyze_case_documents(
-        sorted((case_dir / "autos").glob("*.pdf")),
-        sorted((case_dir / "subsidios").glob("*.pdf")),
-    )
-    apply_analysis_to_case(case, analysis)
-    upsert_case_recommendation(db, case)
-    db.commit()
+    background_tasks.add_task(process_case_in_background, case.id)
 
     return CaseIngestResponse(
         id=case.id,
@@ -184,4 +177,5 @@ def create_case(
         uf=case.uf,
         assunto=case.assunto,
         sub_assunto=case.sub_assunto,
+        processing_status=case.processing_status,
     )

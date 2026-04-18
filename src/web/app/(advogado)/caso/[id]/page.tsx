@@ -2,6 +2,7 @@ import Link from "next/link"
 import { getCase, getCaseDocuments, getRecommendation } from "@/lib/api"
 import { CaseViewer } from "@/components/CaseViewer"
 import { CaseDocumentsViewer } from "@/components/CaseDocumentsViewer"
+import { CaseProcessingPanel } from "@/components/CaseProcessingPanel"
 import { RecommendationCard } from "@/components/RecommendationCard"
 import { OutcomeForm } from "@/components/OutcomeForm"
 import { AlertTriangle, ArrowLeft, ChevronRight, FileWarning, Scale } from "lucide-react"
@@ -27,8 +28,20 @@ export default async function CasoPage({ params }: Props) {
   const caso = caseResult.value
   const rec = recommendationResult.status === "fulfilled" ? recommendationResult.value : null
   const documents = documentsResult.status === "fulfilled" ? documentsResult.value : []
-  const recommendationError = recommendationResult.status === "rejected" ? "A recomendação deste caso não pôde ser carregada agora." : null
+  const processingState = caso.processing_status?.state
+  const recommendationError =
+    recommendationResult.status === "rejected"
+      ? processingState === "queued" || processingState === "running"
+        ? "Os agentes ainda estao concluindo a analise. A recomendacao sera liberada quando a politica V5 terminar."
+        : processingState === "failed"
+          ? "O pipeline encontrou um bloqueio e encaminhou o caso para revisao humana antes de liberar a recomendacao."
+          : "A recomendação deste caso não pôde ser carregada agora."
+      : null
   const documentsError = documentsResult.status === "rejected" ? "Os documentos deste caso não puderam ser carregados agora." : null
+  const headerStatus =
+    processingState === "queued" || processingState === "running"
+      ? (caso.processing_status?.current_label ?? "Em processamento")
+      : caso.status.replace("_", " ")
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 py-8">
@@ -55,10 +68,21 @@ export default async function CasoPage({ params }: Props) {
           </div>
           <div className="hidden text-right md:block">
             <p className="text-sm font-medium text-muted-foreground">Status atual</p>
-            <p className="mt-1 text-sm font-semibold capitalize text-foreground">{caso.status.replace("_", " ")}</p>
+            <p className="mt-1 text-sm font-semibold capitalize text-foreground">{headerStatus}</p>
           </div>
         </div>
       </div>
+
+      <CaseProcessingPanel
+        key={[
+          caso.id,
+          caso.status,
+          caso.processing_status?.state ?? "none",
+          caso.processing_status?.current_stage ?? "none",
+          caso.processing_status?.completed_at ?? "open",
+        ].join(":")}
+        initialCase={caso}
+      />
 
       {/* Main Grid Workspace */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 relative z-10">
@@ -81,7 +105,12 @@ export default async function CasoPage({ params }: Props) {
               {rec ? <RecommendationCard rec={rec} /> : <RecommendationUnavailable message={recommendationError} />}
             </div>
             <div className="rounded-3xl border border-border/50 bg-background/50 p-1 shadow-lg shadow-black/5 backdrop-blur-md">
-              <OutcomeForm caseId={id} recomendacao={rec?.decisao} caseStatus={caso.status} />
+              <OutcomeForm
+                caseId={id}
+                recomendacao={rec?.decisao}
+                caseStatus={caso.status}
+                processingState={processingState}
+              />
             </div>
           </div>
         </div>

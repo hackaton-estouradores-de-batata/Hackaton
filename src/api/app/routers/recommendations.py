@@ -5,6 +5,7 @@ from app.db import get_db
 from app.models.case import Case
 from app.models.recommendation import Recommendation
 from app.schemas.recommendation import RecommendationRead
+from app.services.case_processing import case_processing_active, get_processing_state
 from app.services.case_normalization import normalize_case_record
 from app.services import apply_recommendation_payload, build_recommendation_for_case, sync_case_status
 
@@ -35,6 +36,18 @@ def get_recommendation(case_id: str, db: Session = Depends(get_db)) -> Recommend
         .order_by(Recommendation.created_at.desc())
         .first()
     )
+
+    processing_state = get_processing_state(case)
+    if recommendation is None and case_processing_active(case):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Caso ainda em processamento pelo pipeline de analise.",
+        )
+    if recommendation is None and processing_state == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="O processamento do caso falhou e precisa de revisao humana.",
+        )
 
     payload, _ = build_recommendation_for_case(
         case,
