@@ -8,6 +8,6 @@
 ## Conteudo gerado em runtime
 
 - `app.db`: banco SQLite local do backend.
-- `processos_exemplo/case_*/`: casos ingeridos pela rota `POST /api/cases`.
+- `processos_cadastrados/case_*/`: casos ingeridos pela rota `POST /api/cases`.
 
 Esses artefatos de runtime nao devem ser versionados.

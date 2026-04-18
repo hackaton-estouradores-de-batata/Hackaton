@@ -432,7 +432,7 @@ def test_apply_analysis_preserves_terminal_status_and_embedding_metadata() -> No
     assert case.status == "closed"
     assert case.embedding_source == SEMANTIC_TEXT_STRATEGY
     assert case.embedding_model == LOCAL_EMBEDDING_MODEL
-    assert case.source_folder.endswith("/data/processos_exemplo/case_closed-case")
+    assert case.source_folder.endswith("/data/processos_cadastrados/case_closed-case")
 
 
 def test_apply_analysis_accepts_brazilian_currency_strings() -> None:
@@ -533,7 +533,7 @@ def test_repair_case_reanalyzes_legacy_payload_with_canonical_source_folder() ->
             "case_text": "resumo semântico",
         },
     }
-    canonical_dir = DATA_DIR / "processos_exemplo" / "case_legacy-repair"
+    canonical_dir = DATA_DIR / "processos_cadastrados" / "case_legacy-repair"
 
     with patch(
         "app.services.case_sanitizer.canonical_case_directory",
@@ -610,7 +610,7 @@ def test_sanitize_cases_dry_run_rolls_back_changes() -> None:
             "embedding_source": getattr(target_case, "embedding_source", None),
         }
         target_case.status = "analyzed"
-        target_case.source_folder = "/workspace/data/processos_exemplo/case_legacy-dry-run"
+        target_case.source_folder = "/workspace/data/processos_cadastrados/case_legacy-dry-run"
         target_case.uf = "MA"
         target_case.assunto = HISTORY_ASSUNTO_DEFAULT
         target_case.sub_assunto = HISTORY_SUBASSUNTO_GENERIC
@@ -645,7 +645,7 @@ def test_sanitize_cases_dry_run_rolls_back_changes() -> None:
     }
     assert payload["updated_cases"][0]["changed"]["source_folder"] == {
         "before": "/app/data/processos_exemplo/case_legacy-dry-run",
-        "after": "/workspace/data/processos_exemplo/case_legacy-dry-run",
+        "after": "/workspace/data/processos_cadastrados/case_legacy-dry-run",
     }
 
 

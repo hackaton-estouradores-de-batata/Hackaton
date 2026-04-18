@@ -10,5 +10,9 @@ src/api/data/*.sqlite
 data/app.db
 data/hackathon.db
 data/processos_exemplo/case_*/
-slides/node_modules/
-slides/.next/
+data/processos_cadastrados/case_*/
+docs/slides/node_modules/
+docs/slides/.next/
+data/embeddings.faiss
+data/embeddings.npy
+data/embeddings_metadata.json

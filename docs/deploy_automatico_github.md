@@ -75,8 +75,8 @@ WEB_PORT=3000
 API_BIND=127.0.0.1
 WEB_BIND=127.0.0.1
 DATABASE_URL=sqlite:////workspace/data/app.db
-CASE_STORAGE_DIR=/workspace/data/processos_exemplo
-POLICY_PATH=/workspace/policy/acordos_v1.yaml
+CASE_STORAGE_DIR=/workspace/data/processos_cadastrados
+POLICY_PATH=/workspace/src/policy/acordos_v1.yaml
 OPENAI_API_KEY=coloque_sua_chave
 ```
 

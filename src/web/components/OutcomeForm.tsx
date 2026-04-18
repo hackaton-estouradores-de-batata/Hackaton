@@ -218,20 +218,20 @@ export function OutcomeForm({ caseId, recomendacao, caseStatus, onSubmitted }: P
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" /> Sentença</label>
                   <ToggleGroup
-                    options={["procedente", "improcedente", "parcial"] as Sentenca[]}
+                    options={["procedente", "improcedente", "parcial", "extinto"] as Sentenca[]}
                     value={sentenca}
                     onChange={(next) => {
                       setSentenca(next)
-                      if (next === "improcedente") {
+                      if (next === "improcedente" || next === "extinto") {
                         setCondenacao("")
                         setCustos("")
                       }
                     }}
-                    labels={{ procedente: "Procedente", improcedente: "Improcedente", parcial: "Parcial" }}
+                    labels={{ procedente: "Procedente", improcedente: "Improcedente", parcial: "Parcial", extinto: "Extinto" }}
                     colorScheme="blue"
                   />
                 </div>
-                {sentenca && sentenca !== "improcedente" && (
+                {sentenca && sentenca !== "improcedente" && sentenca !== "extinto" && (
                   <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
                     <InputField label="Condenação" value={condenacao} onChange={(event) => setCondenacao(event.target.value)} placeholder="0,00" prefix="R$" />
                     <InputField label="Custos" value={custos} onChange={(event) => setCustos(event.target.value)} placeholder="0,00" prefix="R$" />

@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/case-status"
-import { formatBRL } from "@/lib/utils"
+import { formatBRL, formatTechnicalLabel } from "@/lib/utils"
 import type { Case } from "@/lib/types"
 
 export function CaseViewer({ caso }: { caso: Case }) {
@@ -42,7 +42,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
           {caso.vulnerabilidade_autor && caso.vulnerabilidade_autor !== "nenhuma" && (
             <div>
               <p className="text-xs text-muted-foreground">Vulnerabilidade</p>
-              <p className="font-semibold capitalize">{caso.vulnerabilidade_autor}</p>
+              <p className="font-semibold">{formatTechnicalLabel(caso.vulnerabilidade_autor)}</p>
             </div>
           )}
           {caso.uf && (
@@ -95,7 +95,9 @@ export function CaseViewer({ caso }: { caso: Case }) {
               <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">Red flags</p>
             </div>
             {caso.red_flags.map((f) => (
-              <p key={f} className="text-xs font-mono text-yellow-700 dark:text-yellow-400">{f}</p>
+              <p key={f} className="text-xs text-yellow-700 dark:text-yellow-400">
+                {formatTechnicalLabel(f)}
+              </p>
             ))}
           </div>
         ) : (
@@ -110,7 +112,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
             <ul className="space-y-1">
               {caso.inconsistencias_temporais.map((item) => (
                 <li key={item} className="rounded bg-muted px-2 py-1 text-xs">
-                  {item}
+                  {formatTechnicalLabel(item)}
                 </li>
               ))}
             </ul>
@@ -122,7 +124,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
             <p className="mb-2 text-xs text-muted-foreground">Subsídios estruturados</p>
             <div className="space-y-1">
               {Object.entries(caso.subsidios).map(([key, value]) => {
-                const label = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
+                const label = formatTechnicalLabel(key)
                 let displayValue: React.ReactNode = String(value)
                 if (typeof value === "boolean") {
                   if (value) {
@@ -130,6 +132,8 @@ export function CaseViewer({ caso }: { caso: Case }) {
                   } else {
                     displayValue = <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">✕ Ausente</span>
                   }
+                } else if (typeof value === "string") {
+                  displayValue = formatTechnicalLabel(value)
                 }
 
                 return (
