@@ -684,6 +684,12 @@ entrada:
 - UF
 - SUB
 - docs_presentes
+- tem_contrato
+- tem_dossie
+
+sanidade documental:
+- se tem_contrato == falso e tem_dossie == falso:
+    assinatura_validada = falso
 
 qtd_docs = contar(docs_presentes)
 
@@ -721,13 +727,32 @@ f_pag = 1 - desconto_uf
 vpc = PED * f_pag
 vej = vpc * p_per
 
-f_ab = limitar(0.90 - 0.05 * qtd_docs, 0.60, 0.95)
-f_al = limitar(f_ab + 0.08, 0.65, 0.97)
-f_tet = limitar(f_ab + 0.15, 0.70, 0.99)
+benchmark_acordo = PED * 0.30  # media nacional dos microresultados "acordo"
 
-abertura = arredondar_100(vej * f_ab)
-alvo = arredondar_100(vej * f_al)
-teto = arredondar_100(vej * f_tet)
+if SUB == "golpe" e qtd_docs <= 3 e tem_contrato == falso e tem_dossie == falso e benchmark_acordo < vej:
+    blends = {
+        0: (0.30, 0.55, 0.80),
+        1: (0.24, 0.48, 0.73),
+        2: (0.17, 0.41, 0.65),
+        3: (0.10, 0.34, 0.57),
+    }
+    (b_ab, b_al, b_tet) = blends[qtd_docs]
+    gap = vej - benchmark_acordo
+    abertura = arredondar_100(benchmark_acordo + gap * b_ab)
+    alvo = arredondar_100(benchmark_acordo + gap * b_al)
+    teto = arredondar_100(benchmark_acordo + gap * b_tet)
+else:
+    f_ab = limitar(0.90 - 0.05 * qtd_docs, 0.60, 0.95)
+    f_al = limitar(f_ab + 0.08, 0.65, 0.97)
+    f_tet = limitar(f_ab + 0.15, 0.70, 0.99)
+    abertura = arredondar_100(vej * f_ab)
+    alvo = arredondar_100(vej * f_al)
+    teto = arredondar_100(vej * f_tet)
+
+aplicar invariantes de oferta:
+- alvo >= abertura
+- teto >= alvo
+- teto < vej
 teto_pct = teto / PED
 
 if teto_pct >= 0.25:

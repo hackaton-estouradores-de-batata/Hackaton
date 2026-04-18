@@ -89,6 +89,43 @@ export interface DashboardMetrics {
   has_enough_data: boolean
 }
 
+export interface ParetoItem {
+  sub_assunto: string
+  total_valor_pedido: number
+  count: number
+}
+
+export interface ResultadoMicroItem {
+  resultado_micro: string
+  count: number
+  pct: number
+}
+
+export interface MatrixCell {
+  uf: string
+  qtd_docs: number
+  taxa_sucesso: number
+  count: number
+}
+
+export interface ValorPedidoVsPago {
+  total_pedido: number
+  total_pago: number
+  percentual_pago: number
+  count: number
+}
+
+export interface DashboardAnalytics {
+  pareto: ParetoItem[]
+  valor_pedido_vs_pago: ValorPedidoVsPago
+  kpi_economia_nao_exito_defesa: number
+  resultado_macro: { exito_pct: number; nao_exito_pct: number; total: number }
+  resultado_micro: ResultadoMicroItem[]
+  matrix: MatrixCell[]
+  ufs_disponiveis: string[]
+  sub_assuntos_disponiveis: string[]
+}
+
 export interface CaseDocument {
   name: string
   display_name: string

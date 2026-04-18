@@ -4,6 +4,8 @@ import re
 import unicodedata
 from typing import Any
 
+from app.services.case_normalization import enforce_subsidios_consistency
+
 DOC_TYPES = (
     "contrato",
     "comprovante_credito",
@@ -141,4 +143,4 @@ def merge_subsidios_with_inventory(
 ) -> dict[str, Any]:
     merged = dict(subsidios_data)
     merged.update(inventory_to_subsidios_fields(inventory))
-    return merged
+    return enforce_subsidios_consistency(merged)

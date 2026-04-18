@@ -1,4 +1,4 @@
-import type { Case, Recommendation, OutcomePayload, DashboardMetrics, CaseDocument, CaseIngestResponse } from "./types"
+import type { Case, Recommendation, OutcomePayload, DashboardMetrics, DashboardAnalytics, CaseDocument, CaseIngestResponse } from "./types"
 
 const SERVER_API_BASE_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
 
@@ -87,6 +87,27 @@ export async function getCaseDocuments(id: string): Promise<CaseDocument[]> {
 
 export async function createCase(formData: FormData): Promise<CaseIngestResponse> {
   return request<CaseIngestResponse>("/api/cases", { method: "POST", body: formData })
+}
+
+export async function getDashboardAnalytics(uf?: string, subAssunto?: string): Promise<DashboardAnalytics> {
+  const params = new URLSearchParams()
+  if (uf) params.set("uf", uf)
+  if (subAssunto) params.set("sub_assunto", subAssunto)
+  const qs = params.toString()
+  try {
+    return await request<DashboardAnalytics>(`/api/dashboard/analytics${qs ? `?${qs}` : ""}`)
+  } catch {
+    return {
+      pareto: [],
+      valor_pedido_vs_pago: { total_pedido: 0, total_pago: 0, percentual_pago: 0, count: 0 },
+      kpi_economia_nao_exito_defesa: 0,
+      resultado_macro: { exito_pct: 0, nao_exito_pct: 0, total: 0 },
+      resultado_micro: [],
+      matrix: [],
+      ufs_disponiveis: [],
+      sub_assuntos_disponiveis: [],
+    }
+  }
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {

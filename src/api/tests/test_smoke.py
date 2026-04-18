@@ -95,6 +95,9 @@ EXAMPLE_CASES = {
             "dossie",
             "laudo_referenciado",
         ],
+        "subsidios_expected": {
+            "assinatura_validada": True,
+        },
     },
     "caso_002": {
         "autos": [
@@ -129,6 +132,9 @@ EXAMPLE_CASES = {
             "demonstrativo_evolucao_divida",
             "laudo_referenciado",
         ],
+        "subsidios_expected": {
+            "assinatura_validada": False,
+        },
     },
 }
 
@@ -179,6 +185,7 @@ def test_extraction_pipeline_runs_on_example_cases_without_llm() -> None:
         assert payload["embedding"] == []
         assert payload["document_inventory"]["qtd_docs"] == fixture["qtd_docs"]
         assert payload["document_inventory"]["documentos_presentes"] == fixture["documentos_presentes"]
+        assert payload["subsidios_data"]["assinatura_validada"] == fixture["subsidios_expected"]["assinatura_validada"]
 
 
 def test_historical_summary_for_mock_cases_has_similares() -> None:
@@ -311,6 +318,27 @@ def test_extract_features_enforces_subsidy_consistency() -> None:
 
     assert features_data["red_flags"] == ["indicio_fraude_autor"]
     assert features_data["indicio_fraude"] == 0.49
+
+
+def test_extract_subsidios_rejects_validated_signature_without_contract_or_dossie() -> None:
+    with patch(
+        "app.llm.client.chat_json_prompt",
+        return_value={
+            "tem_contrato": False,
+            "tem_extrato": False,
+            "tem_dossie": False,
+            "tem_comprovante": True,
+            "tem_laudo_referenciado": True,
+            "assinatura_validada": True,
+            "canal_contratacao": "digital",
+            "valor_emprestimo": "R$ 8.500,00",
+        },
+    ):
+        subsidios_data = extract_subsidios_structured("laudo menciona biometria, sem contrato e sem dossie")
+
+    assert subsidios_data["tem_contrato"] is False
+    assert subsidios_data["tem_dossie"] is False
+    assert subsidios_data["assinatura_validada"] is False
 
 
 def test_extract_context_prefers_generico_with_robust_subsidios() -> None:
@@ -729,6 +757,9 @@ def test_v5_payload_matches_oracle_for_sparse_golpe_case() -> None:
         "demonstrativo_evolucao_divida",
         "laudo_referenciado",
     ]
+    assert payload["valor_sugerido_min"] == Decimal("6000.00")
+    assert payload["policy_trace"]["alvo"] == pytest.approx(7500.0, rel=0, abs=1e-9)
+    assert payload["valor_sugerido_max"] == Decimal("9000.00")
     assert payload["policy_trace"]["p_suc"] == pytest.approx(float(expected.p_suc), rel=0, abs=1e-9)
     assert payload["policy_trace"]["vej"] == pytest.approx(float(expected.vej), rel=0, abs=1e-9)
 

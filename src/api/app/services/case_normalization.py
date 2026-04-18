@@ -108,6 +108,16 @@ def coerce_canal_contratacao(value: Any) -> str | None:
     return None
 
 
+def enforce_subsidios_consistency(subsidios: Mapping[str, Any] | None) -> dict[str, Any]:
+    normalized = dict(subsidios or {})
+    has_signature_basis = bool(normalized.get("tem_contrato")) or bool(normalized.get("tem_dossie"))
+
+    if not has_signature_basis:
+        normalized["assinatura_validada"] = False
+
+    return normalized
+
+
 def coerce_subsidios(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
@@ -133,7 +143,7 @@ def coerce_subsidios(value: Any) -> dict[str, Any]:
         )
     if "canal_contratacao" in normalized:
         normalized["canal_contratacao"] = coerce_canal_contratacao(normalized["canal_contratacao"])
-    return normalized
+    return enforce_subsidios_consistency(normalized)
 
 
 def coerce_vulnerabilidade(value: Any) -> str:

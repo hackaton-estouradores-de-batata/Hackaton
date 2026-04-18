@@ -16,6 +16,7 @@ from app.services.case_normalization import (
     coerce_canal_contratacao,
     coerce_list,
     coerce_vulnerabilidade,
+    enforce_subsidios_consistency,
 )
 
 logger = logging.getLogger(__name__)
@@ -504,7 +505,7 @@ def _normalize_subsidios_payload(payload: dict[str, Any], fallback: dict[str, An
     normalized["valor_emprestimo"] = (
         _parse_numeric_value(value_emprestimo) if value_emprestimo is not None else fallback.get("valor_emprestimo")
     )
-    return normalized
+    return enforce_subsidios_consistency(normalized)
 
 
 def _normalize_features_payload(payload: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
@@ -903,7 +904,8 @@ def heuristic_extract_subsidios(text: str) -> dict[str, Any]:
         or "nao validada" in lowered
         or "não validada" in lowered
     )
-    return {
+    return enforce_subsidios_consistency(
+        {
         "tem_contrato": "contrato" in lowered,
         "tem_extrato": "extrato" in lowered,
         "tem_dossie": "dossi" in lowered or "dossie" in lowered,
@@ -916,7 +918,8 @@ def heuristic_extract_subsidios(text: str) -> dict[str, Any]:
         "canal_contratacao": coerce_canal_contratacao(lowered),
         "valor_emprestimo": _parse_brl_value(text),
         "documento_contraditorio": has_positive_auth and has_negative_auth,
-    }
+        }
+    )
 
 
 def heuristic_extract_features(

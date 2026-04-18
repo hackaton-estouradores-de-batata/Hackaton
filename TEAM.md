@@ -103,13 +103,21 @@
 
 ## Sprint 5 — Dashboard do Banco (2h) · P4
 
-| Tarefa | Arquivo |
-|--------|---------|
-| Endpoint agregado de métricas reais | `src/api/app/routers/dashboard.py` |
-| DashboardPage com cards de aderência, aceite de acordo e disagreement do judge | `src/web/app/(banco)/dashboard/page.tsx` |
-| Evoluir para visão por período e faixas de valor | `src/web/app/(banco)/dashboard/page.tsx` |
-| Popular ambiente com casos e outcomes suficientes para leitura de métricas | `scripts/seed_db.py` ou seed equivalente |
-| **Checkpoint**: dashboard com dados coerentes, mesmo que ainda simplificado | — |
+| Tarefa | Arquivo | Status |
+|--------|---------|--------|
+| Endpoint `/api/dashboard/metrics` com KPIs operacionais | `src/api/app/routers/dashboard.py` | ✅ |
+| Endpoint `/api/dashboard/analytics?uf=&sub_assunto=` com dados analíticos | `src/api/app/routers/dashboard.py` | ✅ |
+| Schemas para todos os payloads analíticos | `src/api/app/schemas/dashboard.py` | ✅ |
+| Gráfico de Pareto: Eixo X = Sub-assunto, Y = Valor Pedido + linha acumulada | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Card Valor Pedido × Valor Pago (percentual efetivamente pago) | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Filtros interativos: UF e Sub-assunto (re-fetch ao mudar) | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| KPI Economia quando Resultado Macro = Não Êxito e há defesa | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Card Resultado Macro: % Êxito e % Não Êxito com barra visual | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Gráfico de Pizza: Distribuição de Resultado Micro (quantidade por tipo) | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Matriz: Linhas = Qtd Docs, Colunas = UF, Valores = Taxa de Sucesso | `src/web/app/(banco)/dashboard/page.tsx` | ✅ |
+| Tipos TS para todos os novos payloads | `src/web/lib/types.ts` | ✅ |
+| `getDashboardAnalytics(uf?, subAssunto?)` no cliente API | `src/web/lib/api.ts` | ✅ |
+| **Checkpoint**: dashboard com Pareto, Pie, Matriz e KPIs financeiros | — | ✅ |
 
 ---
 

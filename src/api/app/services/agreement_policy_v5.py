@@ -97,6 +97,16 @@ MICRO_RESULT_RULES: dict[str, dict[str, Any]] = {
     },
 }
 
+SPARSE_GOLPE_BLEND: dict[int, tuple[Decimal, Decimal, Decimal]] = {
+    0: (Decimal("0.30"), Decimal("0.55"), Decimal("0.80")),
+    1: (Decimal("0.24"), Decimal("0.48"), Decimal("0.73")),
+    2: (Decimal("0.17"), Decimal("0.41"), Decimal("0.65")),
+    3: (Decimal("0.10"), Decimal("0.34"), Decimal("0.57")),
+}
+
+DEFAULT_OFFER_PROFILE = "baseline_vej"
+SPARSE_GOLPE_OFFER_PROFILE = "micro_anchor_acordo"
+
 
 def _row(d0: str, d1: str, d2: str, d3: str, d4: str, d5: str, d6: str, total: str) -> MatrixRow:
     return {
@@ -397,6 +407,47 @@ def _enforce_offer_invariants(
     return max(abertura, Decimal("0")), max(alvo, Decimal("0")), max(teto, Decimal("0"))
 
 
+def _agreement_payment_anchor(ped: Decimal) -> Decimal:
+    acordo_rule = MICRO_RESULT_RULES[MICRO_RESULT_ACORDO]
+    percentual_pago = Decimal("1") - Decimal(acordo_rule["desconto_ped"])
+    return (ped * percentual_pago).quantize(CENTS)
+
+
+def _use_sparse_golpe_offer_profile(case: PolicyCaseInputV5, sub: str, qtd_docs: int, vej: Decimal) -> bool:
+    return (
+        sub == SUB_GOLPE
+        and qtd_docs in SPARSE_GOLPE_BLEND
+        and not case.contrato
+        and not case.dossie
+        and _agreement_payment_anchor(case.ped) < vej
+    )
+
+
+def _build_offer_window(
+    case: PolicyCaseInputV5,
+    *,
+    sub: str,
+    qtd_docs: int,
+    vej: Decimal,
+) -> tuple[Decimal, Decimal, Decimal]:
+    if _use_sparse_golpe_offer_profile(case, sub, qtd_docs, vej):
+        benchmark = _agreement_payment_anchor(case.ped)
+        abertura_blend, alvo_blend, teto_blend = SPARSE_GOLPE_BLEND[qtd_docs]
+        gap = vej - benchmark
+        abertura = _round_to_nearest_100(benchmark + gap * abertura_blend)
+        alvo = _round_to_nearest_100(benchmark + gap * alvo_blend)
+        teto = _round_to_nearest_100(benchmark + gap * teto_blend)
+        return _enforce_offer_invariants(abertura, alvo, teto, vej)
+
+    f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
+    f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
+    f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
+    abertura = _round_to_nearest_100(vej * f_ab)
+    alvo = _round_to_nearest_100(vej * f_al)
+    teto = _round_to_nearest_100(vej * f_tet)
+    return _enforce_offer_invariants(abertura, alvo, teto, vej)
+
+
 def build_policy_case_input(case_data: dict[str, Any]) -> PolicyCaseInputV5:
     subsidios = dict(case_data.get("subsidios") or {})
     ped = _to_decimal(case_data.get("valor_pedido_danos_morais"))
@@ -468,15 +519,7 @@ def calculate_policy_v5(case: PolicyCaseInputV5) -> PolicyResultV5:
     f_pag = Decimal("1") - desc_uf
     vpc = case.ped * f_pag
     vej = vpc * p_per
-
-    f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
-    f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
-    f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
-
-    abertura = _round_to_nearest_100(vej * f_ab)
-    alvo = _round_to_nearest_100(vej * f_al)
-    teto = _round_to_nearest_100(vej * f_tet)
-    abertura, alvo, teto = _enforce_offer_invariants(abertura, alvo, teto, vej)
+    abertura, alvo, teto = _build_offer_window(case, sub=sub, qtd_docs=qtd_docs, vej=vej)
 
     teto_pct = (teto / case.ped) if case.ped > 0 else Decimal("0")
     decisao = "ACORDO" if teto_pct >= Decimal("0.25") else "DEFESA"
@@ -507,6 +550,11 @@ def resolve_policy_backtest_cost(result: PolicyResultV5) -> Decimal:
 
 
 def build_policy_trace(result: PolicyResultV5, case: PolicyCaseInputV5) -> dict[str, Any]:
+    offer_profile = (
+        SPARSE_GOLPE_OFFER_PROFILE
+        if _use_sparse_golpe_offer_profile(case, result.sub, result.qtd_docs, result.vej)
+        else DEFAULT_OFFER_PROFILE
+    )
     return {
         "mode": "v5",
         "matriz_escolhida": result.matriz_escolhida,
@@ -520,6 +568,8 @@ def build_policy_trace(result: PolicyResultV5, case: PolicyCaseInputV5) -> dict[
         "alvo": float(result.alvo),
         "teto": float(result.teto),
         "teto_pct": float(result.teto_pct),
+        "offer_profile": offer_profile,
+        "benchmark_acordo": float(_agreement_payment_anchor(case.ped)),
         "revisao_humana": result.revisao_humana,
         "uf_sem_historico_proprio": result.uf_sem_historico_proprio,
     }

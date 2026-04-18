@@ -102,6 +102,16 @@ MICRO_RESULT_RULES: Dict[str, Dict[str, Any]] = {
 	},
 }
 
+SPARSE_GOLPE_BLEND: Dict[int, tuple[Decimal, Decimal, Decimal]] = {
+	0: (Decimal("0.30"), Decimal("0.55"), Decimal("0.80")),
+	1: (Decimal("0.24"), Decimal("0.48"), Decimal("0.73")),
+	2: (Decimal("0.17"), Decimal("0.41"), Decimal("0.65")),
+	3: (Decimal("0.10"), Decimal("0.34"), Decimal("0.57")),
+}
+
+DEFAULT_OFFER_PROFILE = "baseline_vej"
+SPARSE_GOLPE_OFFER_PROFILE = "micro_anchor_acordo"
+
 
 def _row(d0: str, d1: str, d2: str, d3: str, d4: str, d5: str, d6: str, total: str) -> MatrixRow:
 	return {
@@ -418,6 +428,47 @@ def _enforce_offer_invariants(
 	return max(abertura, Decimal("0")), max(alvo, Decimal("0")), max(teto, Decimal("0"))
 
 
+def _agreement_payment_anchor(ped: Decimal) -> Decimal:
+	acordo_rule = MICRO_RESULT_RULES[MICRO_RESULT_ACORDO]
+	percentual_pago = Decimal("1") - Decimal(acordo_rule["desconto_ped"])
+	return (ped * percentual_pago).quantize(Decimal("0.01"))
+
+
+def _use_sparse_golpe_offer_profile(case: CaseInput, sub: str, qtd_docs: int, vej: Decimal) -> bool:
+	return (
+		sub == SUB_GOLPE
+		and qtd_docs in SPARSE_GOLPE_BLEND
+		and not case.contrato
+		and not case.dossie
+		and _agreement_payment_anchor(case.ped) < vej
+	)
+
+
+def _build_offer_window(
+	case: CaseInput,
+	*,
+	sub: str,
+	qtd_docs: int,
+	vej: Decimal,
+) -> tuple[Decimal, Decimal, Decimal]:
+	if _use_sparse_golpe_offer_profile(case, sub, qtd_docs, vej):
+		benchmark = _agreement_payment_anchor(case.ped)
+		abertura_blend, alvo_blend, teto_blend = SPARSE_GOLPE_BLEND[qtd_docs]
+		gap = vej - benchmark
+		abertura = _round_to_nearest_100(benchmark + gap * abertura_blend)
+		alvo = _round_to_nearest_100(benchmark + gap * alvo_blend)
+		teto = _round_to_nearest_100(benchmark + gap * teto_blend)
+		return _enforce_offer_invariants(abertura, alvo, teto, vej)
+
+	f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
+	f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
+	f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
+	abertura = _round_to_nearest_100(vej * f_ab)
+	alvo = _round_to_nearest_100(vej * f_al)
+	teto = _round_to_nearest_100(vej * f_tet)
+	return _enforce_offer_invariants(abertura, alvo, teto, vej)
+
+
 def calcular_politica_v5(case: CaseInput) -> PoliticaResultadoV5:
 	if case.ped <= 0:
 		raise ValueError("PED deve ser maior que zero")
@@ -459,18 +510,25 @@ def calcular_politica_v5(case: CaseInput) -> PoliticaResultadoV5:
 	vpc = case.ped * f_pag
 	vej = vpc * p_per
 
-	f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
-	f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
-	f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
+	use_sparse_profile = _use_sparse_golpe_offer_profile(case, sub, qtd_docs, vej)
+	if use_sparse_profile:
+		benchmark = _agreement_payment_anchor(case.ped)
+		abertura_blend, alvo_blend, teto_blend = SPARSE_GOLPE_BLEND[qtd_docs]
+		f_ab = abertura_blend
+		f_al = alvo_blend
+		f_tet = teto_blend
+		abertura_bruta = benchmark + (vej - benchmark) * abertura_blend
+		alvo_bruto = benchmark + (vej - benchmark) * alvo_blend
+		teto_bruto = benchmark + (vej - benchmark) * teto_blend
+	else:
+		f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
+		f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
+		f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
+		abertura_bruta = vej * f_ab
+		alvo_bruto = vej * f_al
+		teto_bruto = vej * f_tet
 
-	abertura_bruta = vej * f_ab
-	alvo_bruto = vej * f_al
-	teto_bruto = vej * f_tet
-
-	abertura = _round_to_nearest_100(abertura_bruta)
-	alvo = _round_to_nearest_100(alvo_bruto)
-	teto = _round_to_nearest_100(teto_bruto)
-	abertura, alvo, teto = _enforce_offer_invariants(abertura, alvo, teto, vej)
+	abertura, alvo, teto = _build_offer_window(case, sub=sub, qtd_docs=qtd_docs, vej=vej)
 
 	teto_pct = teto / case.ped
 	decisao = "ACORDO" if teto_pct >= Decimal("0.25") else "DEFESA"
@@ -549,14 +607,14 @@ def trace_case_v5(case: CaseInput) -> Dict[str, Any]:
 	f_pag = Decimal("1") - desc_uf
 	vpc = case.ped * f_pag
 	vej = vpc * p_per
-
-	f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
-	f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
-	f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
-	abertura = _round_to_nearest_100(vej * f_ab)
-	alvo = _round_to_nearest_100(vej * f_al)
-	teto = _round_to_nearest_100(vej * f_tet)
-	abertura, alvo, teto = _enforce_offer_invariants(abertura, alvo, teto, vej)
+	use_sparse_profile = _use_sparse_golpe_offer_profile(case, sub, qtd_docs, vej)
+	if use_sparse_profile:
+		f_ab, f_al, f_tet = SPARSE_GOLPE_BLEND[qtd_docs]
+	else:
+		f_ab = _clamp(Decimal("0.90") - Decimal("0.05") * Decimal(qtd_docs), Decimal("0.60"), Decimal("0.95"))
+		f_al = _clamp(f_ab + Decimal("0.08"), Decimal("0.65"), Decimal("0.97"))
+		f_tet = _clamp(f_ab + Decimal("0.15"), Decimal("0.70"), Decimal("0.99"))
+	abertura, alvo, teto = _build_offer_window(case, sub=sub, qtd_docs=qtd_docs, vej=vej)
 	teto_pct = teto / case.ped
 
 	return _to_jsonable(
@@ -592,6 +650,8 @@ def trace_case_v5(case: CaseInput) -> Dict[str, Any]:
 				"f_ab": f_ab,
 				"f_al": f_al,
 				"f_tet": f_tet,
+				"offer_profile": SPARSE_GOLPE_OFFER_PROFILE if use_sparse_profile else DEFAULT_OFFER_PROFILE,
+				"benchmark_acordo": _agreement_payment_anchor(case.ped),
 				"abertura": abertura,
 				"alvo": alvo,
 				"teto": teto,
