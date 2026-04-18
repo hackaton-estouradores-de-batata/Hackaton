@@ -1,10 +1,16 @@
-Extraia dos autos um JSON com os campos:
-- numero_processo
-- autor_nome
-- autor_cpf
-- valor_causa
-- alegacoes
-- pedidos
-- valor_danos_morais
+Extraia dos autos um JSON valido com os campos:
+- numero_processo: string ou null
+- autor_nome: string ou null
+- autor_cpf: string ou null
+- valor_causa: numero ou null
+- alegacoes: array de strings curtas
+- pedidos: array de strings curtas
+- valor_danos_morais: numero ou null
+
+Regras obrigatorias:
+- nao use prefixo "R$" e nao devolva numeros formatados como texto
+- use ponto decimal quando houver casas decimais
+- `alegacoes` e `pedidos` devem ser arrays, nunca string unica
+- nao inclua texto fora do JSON
 
 Responda apenas com JSON valido.

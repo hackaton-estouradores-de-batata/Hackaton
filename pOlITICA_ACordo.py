@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP, getcontext
 from typing import Any, Dict, List, Optional
+import unicodedata
 
 
 getcontext().prec = 28
@@ -59,6 +60,46 @@ DISCOUNT_BY_UF: Dict[str, Decimal] = {
 	"SP": Decimal("0.31"),
 	"SE": Decimal("0.33"),
 	"TO": Decimal("0.31"),
+}
+
+MICRO_RESULT_PROCEDENTE = "procedente"
+MICRO_RESULT_PARCIAL_PROCEDENCIA = "parcial_procedencia"
+MICRO_RESULT_IMPROCEDENTE = "improcedente"
+MICRO_RESULT_EXTINTO = "extinto"
+MICRO_RESULT_ACORDO = "acordo"
+MICRO_RESULT_OUTRO = "outro"
+
+MICRO_RESULT_RULES: Dict[str, Dict[str, Any]] = {
+	MICRO_RESULT_PROCEDENTE: {
+		"decisao_referencia": "defesa",
+		"exito_financeiro": False,
+		"desconto_ped": Decimal("0.10"),
+		"leitura": "nao_exito",
+	},
+	MICRO_RESULT_PARCIAL_PROCEDENCIA: {
+		"decisao_referencia": "defesa",
+		"exito_financeiro": False,
+		"desconto_ped": Decimal("0.38"),
+		"leitura": "nao_exito_parcial",
+	},
+	MICRO_RESULT_IMPROCEDENTE: {
+		"decisao_referencia": "defesa",
+		"exito_financeiro": True,
+		"desconto_ped": Decimal("1.00"),
+		"leitura": "exito",
+	},
+	MICRO_RESULT_EXTINTO: {
+		"decisao_referencia": "nula",
+		"exito_financeiro": True,
+		"desconto_ped": Decimal("1.00"),
+		"leitura": "exito_sem_merito",
+	},
+	MICRO_RESULT_ACORDO: {
+		"decisao_referencia": "acordo",
+		"exito_financeiro": False,
+		"desconto_ped": Decimal("0.70"),
+		"leitura": "ganho_parcial_por_acordo",
+	},
 }
 
 
@@ -211,6 +252,18 @@ class PoliticaResultadoV5:
 		return _to_jsonable(asdict(self))
 
 
+@dataclass(frozen=True)
+class MicroResultEconomicOutcome:
+	resultado_micro_normalizado: str
+	decisao_referencia: str
+	exito_financeiro: bool
+	desconto_ped: Decimal
+	percentual_pago: Decimal
+	valor_preservado: Decimal
+	valor_pago: Decimal
+	leitura: str
+
+
 def _to_jsonable(value: Any) -> Any:
 	if isinstance(value, Decimal):
 		return float(value)
@@ -240,13 +293,78 @@ def _normalize_uf(uf: str) -> str:
 	return uf.strip().upper()
 
 
+def _normalize_free_text(value: Any) -> str:
+	normalized = unicodedata.normalize("NFKD", str(value or ""))
+	ascii_only = "".join(char for char in normalized if not unicodedata.combining(char))
+	return " ".join(ascii_only.strip().lower().split())
+
+
 def _normalize_sub(sub: Optional[str]) -> str:
 	if sub is None:
 		return SUB_INDEFINIDO
-	sub_norm = sub.strip().lower()
-	if sub_norm in {SUB_GENERICO, SUB_GOLPE}:
-		return sub_norm
+	sub_norm = _normalize_free_text(sub)
+	if "golpe" in sub_norm or "fraude" in sub_norm:
+		return SUB_GOLPE
+	if "generico" in sub_norm:
+		return SUB_GENERICO
 	return SUB_INDEFINIDO
+
+
+def normalize_micro_result_v5(value: Any) -> str:
+	lowered = _normalize_free_text(value)
+	if not lowered:
+		return MICRO_RESULT_OUTRO
+	if "parcial" in lowered and "proced" in lowered:
+		return MICRO_RESULT_PARCIAL_PROCEDENCIA
+	if "improced" in lowered:
+		return MICRO_RESULT_IMPROCEDENTE
+	if "extint" in lowered:
+		return MICRO_RESULT_EXTINTO
+	if "acordo" in lowered:
+		return MICRO_RESULT_ACORDO
+	if "proced" in lowered:
+		return MICRO_RESULT_PROCEDENTE
+	return MICRO_RESULT_OUTRO
+
+
+def classify_micro_result_economic(
+	resultado_micro: Any,
+	ped: Decimal | None = None,
+) -> MicroResultEconomicOutcome | None:
+	normalized = normalize_micro_result_v5(resultado_micro)
+	rule = MICRO_RESULT_RULES.get(normalized)
+	if rule is None:
+		return None
+
+	ped_decimal = (Decimal(str(ped)) if ped is not None else Decimal("0")).quantize(Decimal("0.01"))
+	desconto_ped = Decimal(rule["desconto_ped"]).quantize(Decimal("0.01"))
+	percentual_pago = (Decimal("1") - desconto_ped).quantize(Decimal("0.01"))
+	valor_preservado = (ped_decimal * desconto_ped).quantize(Decimal("0.01"))
+	valor_pago = (ped_decimal * percentual_pago).quantize(Decimal("0.01"))
+
+	return MicroResultEconomicOutcome(
+		resultado_micro_normalizado=normalized,
+		decisao_referencia=str(rule["decisao_referencia"]),
+		exito_financeiro=bool(rule["exito_financeiro"]),
+		desconto_ped=desconto_ped,
+		percentual_pago=percentual_pago,
+		valor_preservado=valor_preservado,
+		valor_pago=valor_pago,
+		leitura=str(rule["leitura"]),
+	)
+
+
+def micro_result_rules_payload() -> Dict[str, Dict[str, Any]]:
+	payload: Dict[str, Dict[str, Any]] = {}
+	for key, rule in MICRO_RESULT_RULES.items():
+		payload[key] = {
+			"decisao_referencia": str(rule["decisao_referencia"]),
+			"exito_financeiro": bool(rule["exito_financeiro"]),
+			"desconto_ped": float(Decimal(rule["desconto_ped"]).quantize(Decimal("0.01"))),
+			"percentual_pago": float((Decimal("1") - Decimal(rule["desconto_ped"])).quantize(Decimal("0.01"))),
+			"leitura": str(rule["leitura"]),
+		}
+	return payload
 
 
 def _count_qtd_docs(case: CaseInput) -> int:
@@ -387,6 +505,10 @@ def calcular_politica_v5(case: CaseInput) -> PoliticaResultadoV5:
 		teto=teto,
 		teto_pct=teto_pct,
 	)
+
+
+def resolve_policy_backtest_cost(result: PoliticaResultadoV5) -> Decimal:
+	return result.alvo if result.decisao == "ACORDO" else result.vej
 
 
 def _is_monotonic(values: List[Decimal]) -> bool:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+import re
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -49,7 +50,31 @@ def list_case_document_paths(case: Case) -> tuple[list[Path], list[Path]]:
 def _to_decimal(value: Any) -> Decimal | None:
     if value in (None, ""):
         return None
-    return Decimal(str(value)).quantize(Decimal("0.01"))
+    if isinstance(value, Decimal):
+        return value.quantize(Decimal("0.01"))
+
+    cleaned = re.sub(r"[^\d,\.\-]", "", str(value))
+    if not cleaned:
+        return None
+
+    if "," in cleaned and "." in cleaned:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif "," in cleaned:
+        decimals = cleaned.rsplit(",", 1)[-1]
+        if len(decimals) <= 2:
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif cleaned.count(".") > 1:
+        cleaned = cleaned.replace(".", "")
+
+    try:
+        return Decimal(cleaned).quantize(Decimal("0.01"))
+    except Exception:
+        return None
 
 
 def _to_date(value: Any) -> date | None:

@@ -23,6 +23,7 @@ class Recommendation(Base):
     policy_version: Mapped[str] = mapped_column(String(16), default="v1", nullable=False)
     regras_aplicadas: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     casos_similares_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    policy_trace: Mapped[dict | None] = mapped_column(JSON)
     judge_concorda: Mapped[bool | None] = mapped_column(Boolean)
     judge_observacao: Mapped[str | None] = mapped_column(Text())
     created_at: Mapped[datetime] = mapped_column(

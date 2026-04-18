@@ -25,8 +25,7 @@ RUN --mount=type=cache,target=/app/.next/cache npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_USE_MOCK=false \
+    NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static

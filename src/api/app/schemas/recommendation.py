@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,6 +16,7 @@ class RecommendationRead(BaseModel):
     policy_version: str
     regras_aplicadas: list[str] = []
     casos_similares_ids: list[str] = []
+    policy_trace: dict[str, Any] | None = None
     judge_concorda: bool | None = None
     judge_observacao: str | None = None
     created_at: datetime | None = None

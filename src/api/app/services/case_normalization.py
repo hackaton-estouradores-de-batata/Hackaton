@@ -23,10 +23,28 @@ def coerce_float(value: Any, default: float = 0.0) -> float:
     if isinstance(value, (int, float)):
         return float(value)
 
-    match = re.search(r"(\d+(?:[\.,]\d+)?)", str(value))
-    if match:
-        return float(match.group(1).replace(",", "."))
-    return default
+    cleaned = re.sub(r"[^\d,\.\-]", "", str(value))
+    if not cleaned:
+        return default
+
+    if "," in cleaned and "." in cleaned:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif "," in cleaned:
+        decimals = cleaned.rsplit(",", 1)[-1]
+        if len(decimals) <= 2:
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif cleaned.count(".") > 1:
+        cleaned = cleaned.replace(".", "")
+
+    try:
+        return float(cleaned)
+    except ValueError:
+        return default
 
 
 def coerce_bool(value: Any) -> bool:
@@ -38,16 +56,83 @@ def coerce_bool(value: Any) -> bool:
     return lowered in {"1", "true", "sim", "yes", "y", "presente"}
 
 
+def coerce_canal_contratacao(value: Any) -> str | None:
+    lowered = str(value or "").strip().lower()
+    if not lowered:
+        return None
+
+    if any(
+        marker in lowered
+        for marker in (
+            "correspondente",
+            "telemarketing",
+            "canal telef",
+            "canal telefon",
+            "telefone",
+            "corban",
+        )
+    ):
+        return "correspondente"
+
+    if any(
+        marker in lowered
+        for marker in (
+            "presencial",
+            "agência",
+            "agencia",
+            "atendimento físico",
+            "atendimento fisico",
+            "loja",
+            "guichê",
+            "guiche",
+        )
+    ):
+        return "presencial"
+
+    if lowered == "digital" or any(
+        marker in lowered
+        for marker in (
+            "canal digital",
+            "contratação digital",
+            "contratacao digital",
+            "internet banking",
+            "aplicativo",
+            "app",
+            "site",
+            "online",
+            "web",
+        )
+    ):
+        return "digital"
+
+    return None
+
+
 def coerce_subsidios(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict):
         return {}
 
     normalized = dict(value)
-    for key in ("tem_contrato", "tem_extrato", "tem_dossie", "tem_comprovante", "assinatura_validada"):
+    for key in (
+        "tem_contrato",
+        "tem_extrato",
+        "tem_dossie",
+        "tem_comprovante",
+        "tem_demonstrativo_evolucao_divida",
+        "tem_laudo_referenciado",
+        "assinatura_validada",
+        "documento_contraditorio",
+    ):
         if key in normalized:
             normalized[key] = coerce_bool(normalized[key])
     if "valor_emprestimo" in normalized:
-        normalized["valor_emprestimo"] = coerce_float(normalized["valor_emprestimo"], 0.0)
+        normalized["valor_emprestimo"] = (
+            None
+            if normalized["valor_emprestimo"] in (None, "")
+            else coerce_float(normalized["valor_emprestimo"], 0.0)
+        )
+    if "canal_contratacao" in normalized:
+        normalized["canal_contratacao"] = coerce_canal_contratacao(normalized["canal_contratacao"])
     return normalized
 
 

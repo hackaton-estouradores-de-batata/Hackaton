@@ -1,10 +1,16 @@
-Extraia dos subsidios um JSON com os campos:
-- tem_contrato
-- tem_extrato
-- tem_dossie
-- tem_comprovante
-- assinatura_validada
-- canal_contratacao
-- valor_emprestimo
+Extraia dos subsidios um JSON valido com os campos:
+- assinatura_validada: boolean
+- canal_contratacao: "digital", "correspondente", "presencial" ou null
+- valor_emprestimo: numero ou null
+- documento_contraditorio: boolean
+
+Regras obrigatorias:
+- nao tente inferir presenca de contrato, extrato, dossie, comprovante, demonstrativo ou laudo; isso sera decidido fora do LLM
+- `assinatura_validada` so deve ser `true` quando o documento tecnico confirmar compatibilidade, conformidade, biometria validada ou autenticidade equivalente
+- `documento_contraditorio` so deve ser `true` quando houver conflito objetivo entre documentos, nao por mera ausencia de prova
+- `canal_contratacao` deve usar exatamente um dos valores permitidos
+- nao use prefixo "R$" e nao devolva numeros formatados como texto
+- use ponto decimal quando houver casas decimais
+- nao inclua texto fora do JSON
 
 Responda apenas com JSON valido.

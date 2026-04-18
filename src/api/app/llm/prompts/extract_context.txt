@@ -8,9 +8,9 @@ Regras:
 - use apenas evidencias presentes no payload
 - se o texto extraido estiver insuficiente, retorne null onde nao houver base forte
 - alinhe com a taxonomia historica do projeto sempre que fizer sentido:
-  - assunto: "Nao reconhece operacao" para casos de contratacao/operacao contestada pelo autor
+  - assunto: "Não reconhece operação" para casos de contratacao/operacao contestada pelo autor
   - sub_assunto: "Golpe" quando houver indicios relevantes de fraude, golpe, assinatura divergente, biometria/liveness ausente ou contratacao digital contestada
-  - sub_assunto: "Generico" quando o assunto for "Nao reconhece operacao" sem indicios fortes de golpe
+  - sub_assunto: "Genérico" quando o assunto for "Não reconhece operação" sem indicios fortes de golpe
 - `case_text` deve ser um resumo curto e util para retrieval, consolidando fatos, pedidos e subsidios
 
 Responda apenas com JSON valido.

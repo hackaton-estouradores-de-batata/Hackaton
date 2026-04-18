@@ -78,7 +78,6 @@ DATABASE_URL=sqlite:////workspace/data/app.db
 CASE_STORAGE_DIR=/workspace/data/processos_exemplo
 POLICY_PATH=/workspace/policy/acordos_v1.yaml
 OPENAI_API_KEY=coloque_sua_chave
-NEXT_PUBLIC_USE_MOCK=false
 ```
 
 ## 5. Configurar GitHub Secrets

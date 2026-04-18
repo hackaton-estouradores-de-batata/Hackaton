@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
@@ -19,9 +19,34 @@ def _ensure_sqlite_directory(database_url: str) -> None:
 settings = get_settings()
 _ensure_sqlite_directory(settings.database_url)
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=connect_args)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SQLITE_BUSY_TIMEOUT_MS = 30_000
+
+connect_args = (
+    {
+        "check_same_thread": False,
+        "timeout": SQLITE_BUSY_TIMEOUT_MS / 1000,
+    }
+    if settings.database_url.startswith("sqlite")
+    else {}
+)
+engine = create_engine(
+    settings.database_url,
+    connect_args=connect_args,
+    pool_pre_ping=True,
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
+
+
+if settings.database_url.startswith("sqlite"):
+
+    @event.listens_for(engine, "connect")
+    def _configure_sqlite_connection(dbapi_connection, _connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA synchronous=NORMAL;")
+        cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS};")
+        cursor.execute("PRAGMA foreign_keys=ON;")
+        cursor.close()
 
 
 SQLITE_SCHEMA_MIGRATIONS: dict[str, dict[str, str]] = {
@@ -51,6 +76,7 @@ SQLITE_SCHEMA_MIGRATIONS: dict[str, dict[str, str]] = {
     "recommendations": {
         "regras_aplicadas": "JSON",
         "casos_similares_ids": "JSON",
+        "policy_trace": "JSON",
         "judge_concorda": "BOOLEAN",
         "judge_observacao": "TEXT",
     },

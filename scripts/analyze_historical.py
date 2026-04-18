@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from collections import Counter
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -9,6 +10,17 @@ from pathlib import Path
 import duckdb
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
+API_DIR = ROOT_DIR / "src" / "api"
+if str(API_DIR) not in sys.path:
+    sys.path.insert(0, str(API_DIR))
+
+from app.services.agreement_policy_v5 import (  # noqa: E402
+    MICRO_RESULT_OUTRO,
+    classify_micro_result_economic,
+    micro_result_rules_payload,
+    normalize_micro_result_v5,
+)
+
 CSV_PATH = ROOT_DIR / "data" / "sentencas_60k.csv"
 PROCESSO_COLUMN = next(
     name for name in CSV_PATH.open("r", encoding="utf-8", newline="").readline().strip().split(",") if "processo" in name.lower()
@@ -89,6 +101,14 @@ def _build_duckdb_views() -> tuple[list[dict[str, object]], list[dict[str, objec
         SELECT
             *,
             CASE
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%parcial%' AND lower(coalesce(resultado_micro, '')) LIKE '%proced%' THEN 'parcial_procedencia'
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%improced%' THEN 'improcedente'
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%extint%' THEN 'extinto'
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%acordo%' THEN 'acordo'
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%proced%' THEN 'procedente'
+                ELSE 'outro'
+            END AS resultado_micro_normalizado,
+            CASE
                 WHEN valor_causa IS NULL THEN 'missing'
                 WHEN valor_causa < 5000 THEN '0-5k'
                 WHEN valor_causa < 15000 THEN '5k-15k'
@@ -96,11 +116,31 @@ def _build_duckdb_views() -> tuple[list[dict[str, object]], list[dict[str, objec
                 ELSE '50k+'
             END AS faixa_valor,
             CASE
-                WHEN lower(coalesce(resultado_macro, '')) IN ('êxito', 'exito', 'procedente', 'parcial procedencia', 'parcial procedência')
-                    OR lower(coalesce(resultado_micro, '')) IN ('êxito', 'exito', 'procedente', 'parcial procedencia', 'parcial procedência')
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%improced%'
+                    OR lower(coalesce(resultado_micro, '')) LIKE '%extint%'
                 THEN 1.0
+                WHEN (lower(coalesce(resultado_micro, '')) LIKE '%parcial%' AND lower(coalesce(resultado_micro, '')) LIKE '%proced%')
+                    OR lower(coalesce(resultado_micro, '')) LIKE '%proced%'
+                    OR lower(coalesce(resultado_micro, '')) LIKE '%acordo%'
+                THEN 0.0
+                WHEN lower(coalesce(resultado_macro, '')) IN ('êxito', 'exito')
+                THEN 1.0
+                WHEN lower(coalesce(resultado_macro, '')) IN ('não êxito', 'nao exito')
+                THEN 0.0
+                ELSE NULL
+            END AS vitoria,
+            CASE
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%improced%'
+                    OR lower(coalesce(resultado_micro, '')) LIKE '%extint%'
+                THEN 1.00
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%acordo%'
+                THEN 0.70
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%parcial%' AND lower(coalesce(resultado_micro, '')) LIKE '%proced%'
+                THEN 0.38
+                WHEN lower(coalesce(resultado_micro, '')) LIKE '%proced%'
+                THEN 0.10
                 ELSE 0.0
-            END AS vitoria
+            END AS desconto_ped_referencia
         FROM historical_cases;
         """
     )
@@ -112,6 +152,7 @@ def _build_duckdb_views() -> tuple[list[dict[str, object]], list[dict[str, objec
             COUNT(*) AS total_casos,
             ROUND(AVG(vitoria), 4) AS prob_vitoria
         FROM historical_cases_enriched
+        WHERE vitoria IS NOT NULL
         GROUP BY 1
         ORDER BY 1;
         """
@@ -140,6 +181,9 @@ def _build_duckdb_views() -> tuple[list[dict[str, object]], list[dict[str, objec
 def main() -> None:
     resultado_macro_counter: Counter[str] = Counter()
     resultado_micro_counter: Counter[str] = Counter()
+    resultado_micro_normalizado_counter: Counter[str] = Counter()
+    leitura_economica_counter: Counter[str] = Counter()
+    exito_counter: Counter[str] = Counter()
     assunto_counter: Counter[str] = Counter()
     subassunto_counter: Counter[str] = Counter()
     uf_counter: Counter[str] = Counter()
@@ -163,6 +207,8 @@ def main() -> None:
             resultado_micro = normalize_text(row[RESULTADO_MICRO_COLUMN])
             valor_causa = parse_decimal(row[VALOR_CAUSA_COLUMN])
             valor_condenacao = parse_decimal(row[VALOR_CONDENACAO_COLUMN])
+            micro_outcome = classify_micro_result_economic(resultado_micro, valor_causa)
+            normalized_micro = normalize_micro_result_v5(resultado_micro)
 
             if not processo:
                 missing_counter["numero_processo"] += 1
@@ -191,6 +237,14 @@ def main() -> None:
                 resultado_macro_counter[resultado_macro] += 1
             if resultado_micro:
                 resultado_micro_counter[resultado_micro] += 1
+            if normalized_micro != MICRO_RESULT_OUTRO:
+                resultado_micro_normalizado_counter[normalized_micro] += 1
+            else:
+                missing_counter["resultado_micro_inconclusivo"] += 1
+
+            if micro_outcome is not None:
+                leitura_economica_counter[micro_outcome.leitura] += 1
+                exito_counter["exito" if micro_outcome.exito_financeiro else "nao_exito"] += 1
 
             value_bucket_counter[bucket_for_value(valor_causa)] += 1
 
@@ -222,6 +276,12 @@ def main() -> None:
         "top_subassuntos": most_common(subassunto_counter),
         "top_resultados_macro": most_common(resultado_macro_counter),
         "top_resultados_micro": most_common(resultado_micro_counter),
+        "top_resultados_micro_normalizados": most_common(resultado_micro_normalizado_counter),
+        "resultado_micro_economico": {
+            "regras_v5": micro_result_rules_payload(),
+            "leituras": dict(leitura_economica_counter),
+            "exito_vs_nao_exito": dict(exito_counter),
+        },
         "missing_fields": dict(missing_counter),
         "duckdb_views": {
             "taxa_vitoria_por_faixa": taxa_vitoria,

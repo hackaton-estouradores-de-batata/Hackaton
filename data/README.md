@@ -3,7 +3,7 @@
 ## Conteudo versionado
 
 - `sentencas_60k.csv`: base historica convertida para analise.
-- `processos_exemplo/caso_001/` e `processos_exemplo/caso_002/`: mocks fixos usados para referencia e interface.
+- `processos_exemplo/caso_001/` e `processos_exemplo/caso_002/`: fixtures legados versionados para referencia e smoke tests.
 
 ## Conteudo gerado em runtime
 

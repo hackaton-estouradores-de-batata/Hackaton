@@ -81,7 +81,6 @@ As variáveis mais relevantes para o uso com Docker são:
 - `POLICY_PATH`
 - `API_PORT`
 - `WEB_PORT`
-- `NEXT_PUBLIC_USE_MOCK`
 - `OPENAI_API_KEY`
 
 ### Sobre `OPENAI_API_KEY`
@@ -271,27 +270,12 @@ Isso significa:
 - as dependências instaladas pelo Node ficam armazenadas dentro de um volume Docker
 - o diretório `.next` não depende do host
 
-## Mock no frontend
+## Integração do frontend
 
-O frontend suporta modo mock via variável:
+O frontend conversa diretamente com a API da stack Docker via `API_INTERNAL_URL=http://api:8000`.
 
-```env
-NEXT_PUBLIC_USE_MOCK=true
-```
-
-### Quando usar mock
-
-Use mock quando quiser desenvolver a interface sem depender da API real.
-
-### Quando usar integração real
-
-Use:
-
-```env
-NEXT_PUBLIC_USE_MOCK=false
-```
-
-quando quiser que o frontend converse com o backend da stack Docker.
+No navegador, as rotas `/api/*` continuam acessíveis pelo próprio host do Next.js e são
+redirecionadas internamente para o backend.
 
 ## Comandos úteis no dia a dia
 

@@ -1,7 +1,5 @@
 import type { Case, Recommendation, OutcomePayload, DashboardMetrics, CaseDocument, CaseIngestResponse } from "./types"
-import { MOCK_CASES, MOCK_CASE_DOCUMENTS, MOCK_RECOMMENDATION } from "./mock"
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true"
 const SERVER_API_BASE_URL = process.env.API_INTERNAL_URL ?? "http://localhost:8000"
 
 function resolveUrl(path: string): string {
@@ -43,67 +41,55 @@ function normalizeCase(casePayload: Case): Case {
 }
 
 function normalizeRecommendation(recommendationPayload: Recommendation): Recommendation {
+  const trace = recommendationPayload.policy_trace
   return {
     ...recommendationPayload,
     valor_sugerido_min: toNumberOrNull(recommendationPayload.valor_sugerido_min as unknown),
     valor_sugerido_max: toNumberOrNull(recommendationPayload.valor_sugerido_max as unknown),
+    policy_trace: trace
+      ? {
+          ...trace,
+          qtd_docs: Number(trace.qtd_docs ?? 0),
+          p_suc: Number(trace.p_suc ?? 0),
+          p_per: Number(trace.p_per ?? 0),
+          vej: Number(trace.vej ?? 0),
+          abertura: Number(trace.abertura ?? 0),
+          alvo: Number(trace.alvo ?? 0),
+          teto: Number(trace.teto ?? 0),
+          teto_pct: Number(trace.teto_pct ?? 0),
+          documentos_presentes: Array.isArray(trace.documentos_presentes) ? trace.documentos_presentes : [],
+          revisao_humana: Boolean(trace.revisao_humana),
+          uf_sem_historico_proprio: Boolean(trace.uf_sem_historico_proprio),
+        }
+      : null,
   }
 }
 
 export async function getCases(): Promise<Case[]> {
-  if (USE_MOCK) return MOCK_CASES
   return (await request<Case[]>("/api/cases")).map(normalizeCase)
 }
 
 export async function getCase(id: string): Promise<Case> {
-  if (USE_MOCK) return MOCK_CASES.find((c) => c.id === id) ?? MOCK_CASES[0]
   return normalizeCase(await request<Case>(`/api/cases/${id}`))
 }
 
 export async function getRecommendation(id: string): Promise<Recommendation> {
-  if (USE_MOCK) return { ...MOCK_RECOMMENDATION, case_id: id }
   return normalizeRecommendation(await request<Recommendation>(`/api/cases/${id}/recommendation`))
 }
 
 export async function postOutcome(id: string, data: OutcomePayload): Promise<{ ok: boolean }> {
-  if (USE_MOCK) return { ok: true }
   return request(`/api/cases/${id}/outcome`, { method: "POST", body: JSON.stringify(data) })
 }
 
 export async function getCaseDocuments(id: string): Promise<CaseDocument[]> {
-  if (USE_MOCK) return MOCK_CASE_DOCUMENTS.map((doc) => ({ ...doc, name: `${id}-${doc.name}` }))
   return request<CaseDocument[]>(`/api/cases/${id}/documents`)
 }
 
 export async function createCase(formData: FormData): Promise<CaseIngestResponse> {
-  if (USE_MOCK) {
-    return {
-      id: "mock-created-case",
-      status: "analyzed",
-      source_folder: "/mock/case-created",
-      autos_count: formData.getAll("autos_files").length,
-      subsidios_count: formData.getAll("subsidios_files").length,
-      uf: "MG",
-      assunto: "Empréstimo consignado",
-      sub_assunto: "Não reconhecimento da contratação",
-    }
-  }
   return request<CaseIngestResponse>("/api/cases", { method: "POST", body: formData })
 }
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
-  if (USE_MOCK) {
-    return {
-      total_cases: MOCK_CASES.length,
-      total_recommendations: MOCK_CASES.length,
-      total_outcomes: 1,
-      adherence_pct: 100,
-      agreement_acceptance_pct: 100,
-      judge_disagreement_pct: 0,
-      has_enough_data: true,
-    }
-  }
-
   try {
     return await request<DashboardMetrics>("/api/dashboard/metrics")
   } catch {

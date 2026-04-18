@@ -22,6 +22,7 @@ def _get_case_or_404(db: Session, case_id: str) -> Case:
 def _normalize_recommendation(recommendation: Recommendation) -> Recommendation:
     recommendation.regras_aplicadas = list(recommendation.regras_aplicadas or [])
     recommendation.casos_similares_ids = list(recommendation.casos_similares_ids or [])
+    recommendation.policy_trace = dict(recommendation.policy_trace or {})
     return recommendation
 
 

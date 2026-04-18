@@ -6,6 +6,23 @@ export type ResultadoNegociacao = "aceito" | "recusado" | "em_andamento"
 export type Sentenca = "procedente" | "improcedente" | "parcial"
 export type Vulnerabilidade = "idoso" | "analfabeto" | "baixa_renda" | "nenhuma"
 
+export interface RecommendationPolicyTrace {
+  mode: string
+  matriz_escolhida: string
+  sub_estatistico: string
+  qtd_docs: number
+  documentos_presentes: string[]
+  p_suc: number
+  p_per: number
+  vej: number
+  abertura: number
+  alvo: number
+  teto: number
+  teto_pct: number
+  revisao_humana: boolean
+  uf_sem_historico_proprio: boolean
+}
+
 // Espelha CaseRead + campos extras planejados (Sprint 1)
 export interface Case {
   id: string
@@ -45,6 +62,7 @@ export interface Recommendation {
   // campos adicionados pelo judge/retrieval (Sprint 3)
   regras_aplicadas?: string[]
   casos_similares_ids?: string[]
+  policy_trace?: RecommendationPolicyTrace | null
   judge_concorda?: boolean
   judge_observacao?: string | null
   created_at?: string

@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     judge_model: str = "gpt-5.4"
     justify_model: str = "gpt-5.4"
     embedding_model: str = "text-embedding-3-large"
+    enable_ingest_embeddings: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -17,11 +17,14 @@ def _format_currency(value: Any) -> str | None:
     return f"R$ {normalized:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
-def _history_reference(history_summary: dict[str, Any] | None, limit: int = 3) -> str | None:
-    case_ids = list((history_summary or {}).get("casos_similares_ids") or [])[:limit]
-    if not case_ids:
+def _format_percent(value: Any) -> str | None:
+    if value in (None, "", "None"):
         return None
-    return ", ".join(case_ids)
+    try:
+        numeric = float(value)
+    except Exception:
+        return None
+    return f"{round(numeric * 100):.0f}%"
 
 
 def _normalize_justification(payload: dict[str, Any]) -> str | None:
@@ -38,35 +41,39 @@ def _fallback_justification(
     history_summary: dict[str, Any] | None = None,
     judge_result: dict[str, Any] | None = None,
 ) -> str:
+    del case_data, history_summary
+
+    trace = dict(recommendation_payload.get("policy_trace") or {})
     decisao = str(recommendation_payload.get("decisao") or "").upper()
     valor_min = _format_currency(recommendation_payload.get("valor_sugerido_min"))
     valor_max = _format_currency(recommendation_payload.get("valor_sugerido_max"))
-    red_flags = list(case_data.get("red_flags") or [])
-    vulnerabilidade = str(case_data.get("vulnerabilidade_autor") or "").strip() or "não identificada"
-    stats = dict((history_summary or {}).get("stats") or {})
-    prob_vitoria = float(stats.get("prob_vitoria", 0.0) or 0.0)
-    similar_cases = _history_reference(history_summary)
+    vej = _format_currency(trace.get("vej"))
+    alvo = _format_currency(trace.get("alvo"))
+    p_suc = _format_percent(trace.get("p_suc"))
+    matriz = trace.get("matriz_escolhida")
+    qtd_docs = trace.get("qtd_docs")
+    documentos = list(trace.get("documentos_presentes") or [])
 
     parts: list[str] = []
     if decisao == "ACORDO" and valor_min and valor_max:
-        parts.append(f"Recomenda-se ACORDO na faixa de {valor_min} a {valor_max}.")
-    else:
-        parts.append("Recomenda-se DEFESA com base no motor estatístico e na política vigente.")
-
-    if similar_cases:
-        p25 = _format_currency(stats.get("percentil_25")) or "R$ 0,00"
-        p50 = _format_currency(stats.get("percentil_50")) or "R$ 0,00"
         parts.append(
-            f"Foram usados como referência os casos similares {similar_cases}, com probabilidade histórica "
-            f"de êxito do autor em {prob_vitoria:.0%}, p25 em {p25} e p50 em {p50}."
+            f"Recomenda-se ACORDO na faixa de {valor_min} a {valor_max}, com alvo tecnico em {alvo or valor_min} e VEJ estimado em {vej or 'R$ 0,00'}."
+        )
+    else:
+        parts.append(
+            f"Recomenda-se DEFESA pela politica V5, porque o teto racional calculado ficou abaixo do piso comercial do caso."
         )
 
-    if red_flags:
-        parts.append(f"Os principais fatores de risco foram: {', '.join(red_flags[:3])}.")
-    parts.append(f"A vulnerabilidade do autor foi classificada como {vulnerabilidade}.")
+    if matriz and qtd_docs is not None:
+        parts.append(
+            f"A matriz aplicada foi {matriz}, com {qtd_docs} documento(s) valido(s) e probabilidade estimada de exito defensivo em {p_suc or '0%'}."
+        )
+
+    if documentos:
+        parts.append(f"Os documentos considerados foram: {', '.join(documentos[:6])}.")
 
     if judge_result and judge_result.get("concorda") is False and judge_result.get("observacao"):
-        parts.append(f"Revisão humana sugerida pelo judge: {judge_result['observacao']}")
+        parts.append(f"Revisao humana sugerida pelo judge: {judge_result['observacao']}")
 
     return " ".join(parts)
 
@@ -79,6 +86,8 @@ def generate_recommendation_justification(
     *,
     allow_llm: bool = True,
 ) -> str:
+    del history_summary
+
     if allow_llm:
         settings = get_settings()
         llm_payload = chat_json_prompt(
@@ -88,15 +97,6 @@ def generate_recommendation_justification(
                 {
                     "case_data": case_data,
                     "recommendation": recommendation_payload,
-                    "history_summary": {
-                        "stats": dict((history_summary or {}).get("stats") or {}),
-                        "casos_similares_ids": list(
-                            (history_summary or {}).get("casos_similares_ids") or []
-                        )[:5],
-                        "total_casos_similares": int(
-                            (history_summary or {}).get("total_casos_similares", 0) or 0
-                        ),
-                    },
                     "judge_result": judge_result,
                 },
                 ensure_ascii=False,
@@ -108,4 +108,4 @@ def generate_recommendation_justification(
             if text:
                 return text
 
-    return _fallback_justification(case_data, recommendation_payload, history_summary, judge_result)
+    return _fallback_justification(case_data, recommendation_payload, judge_result=judge_result)

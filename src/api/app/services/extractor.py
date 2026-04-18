@@ -3,6 +3,7 @@ from typing import Any
 
 import pdfplumber
 
+from app.core.config import get_settings
 from app.analytics.historical import load_semantic_index_metadata
 from app.analytics.semantic import SEMANTIC_TEXT_STRATEGY, build_runtime_case_text
 from app.llm.client import (
@@ -12,6 +13,7 @@ from app.llm.client import (
     extract_features_structured,
     extract_subsidios_structured,
 )
+from app.services.document_inventory import build_document_inventory, merge_subsidios_with_inventory
 
 
 def extract_text_from_pdf(pdf_path: Path) -> str:
@@ -49,9 +51,18 @@ def _bundle_documents(pdf_paths: list[Path]) -> dict[str, Any]:
 def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path]) -> dict[str, Any]:
     autos_bundle = _bundle_documents(autos_paths)
     subsidios_bundle = _bundle_documents(subsidios_paths)
+    document_inventory = build_document_inventory(
+        {
+            "autos": autos_bundle["texts_by_file"],
+            "subsidios": subsidios_bundle["texts_by_file"],
+        }
+    )
 
     autos_data = extract_autos_structured(autos_bundle["combined_text"])
-    subsidios_data = extract_subsidios_structured(subsidios_bundle["combined_text"])
+    subsidios_data = merge_subsidios_with_inventory(
+        extract_subsidios_structured(subsidios_bundle["combined_text"]),
+        document_inventory,
+    )
     features_data = extract_features_structured(
         autos_bundle["combined_text"],
         autos_data,
@@ -82,13 +93,16 @@ def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path])
         or subsidios_bundle["combined_text"]
         or " ".join([*autos_bundle["filenames"], *subsidios_bundle["filenames"]]),
     )
-    historical_metadata = load_semantic_index_metadata()
-    embedding_payload = build_embedding_payload(
-        embedding_text,
-        provider=historical_metadata.provider if historical_metadata else None,
-        model=historical_metadata.model if historical_metadata else None,
-        allow_local_fallback=not bool(historical_metadata and historical_metadata.provider == "openai"),
-    )
+    settings = get_settings()
+    embedding_payload = None
+    if settings.enable_ingest_embeddings:
+        historical_metadata = load_semantic_index_metadata()
+        embedding_payload = build_embedding_payload(
+            embedding_text,
+            provider=historical_metadata.provider if historical_metadata else None,
+            model=historical_metadata.model if historical_metadata else None,
+            allow_local_fallback=not bool(historical_metadata and historical_metadata.provider == "openai"),
+        )
 
     return {
         "autos_text": autos_bundle["combined_text"],
@@ -96,10 +110,11 @@ def analyze_case_documents(autos_paths: list[Path], subsidios_paths: list[Path])
         "autos_data": autos_data,
         "subsidios_data": subsidios_data,
         "features_data": features_data,
+        "document_inventory": document_inventory,
         "embedding": list(embedding_payload["vector"]) if embedding_payload else [],
         "embedding_provider": embedding_payload["provider"] if embedding_payload else None,
         "embedding_model": embedding_payload["model"] if embedding_payload else None,
         "embedding_dimensions": embedding_payload["dimensions"] if embedding_payload else 0,
-        "embedding_source": SEMANTIC_TEXT_STRATEGY,
+        "embedding_source": SEMANTIC_TEXT_STRATEGY if embedding_payload else None,
         "structured_features": extracted_features,
     }

@@ -1,9 +1,9 @@
 Você redige justificativas auditáveis para advogados em português do Brasil.
 
-Receberá um caso estruturado, a recomendação atual, o resumo histórico e a saída do judge.
+Receberá um caso estruturado, a recomendação atual com o trace da política V5 e a saída do judge.
 Explique a decisão de forma curta, concreta e profissional.
-Quando houver casos_similares_ids, cite explicitamente até 3 IDs.
 Quando houver faixa de acordo, mencione os valores.
+Quando existir `policy_trace`, cite matriz, quantidade de documentos e VEJ de forma natural.
 Quando o judge discordar, informe que revisão humana foi sugerida.
 
 Retorne apenas JSON válido no formato:

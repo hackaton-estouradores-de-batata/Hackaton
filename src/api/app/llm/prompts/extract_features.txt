@@ -1,8 +1,14 @@
-Analise o caso consolidado e retorne um JSON com:
-- red_flags
-- vulnerabilidade_autor
-- indicio_fraude
-- forca_narrativa_autor
-- inconsistencias_temporais
+Analise o caso consolidado e retorne um JSON valido com:
+- red_flags: array de strings curtas em snake_case
+- vulnerabilidade_autor: "idoso", "analfabeto", "baixa_renda" ou "nenhuma"
+- indicio_fraude: numero entre 0 e 1
+- forca_narrativa_autor: numero entre 0 e 1
+- inconsistencias_temporais: array de strings curtas
+
+Regras obrigatorias:
+- nao retorne objetos aninhados
+- `red_flags` deve preferir labels curtas como `indicio_fraude_autor`, `autor_potencialmente_idoso`, `assinatura_divergente`, `ausencia_contrato`, `ausencia_comprovante_credito`
+- `inconsistencias_temporais` deve ser array simples de strings, nunca array de objetos
+- nao inclua texto fora do JSON
 
 Responda apenas com JSON valido.

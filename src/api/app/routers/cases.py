@@ -1,5 +1,6 @@
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
@@ -147,6 +148,7 @@ def create_case(
         )
 
     case = Case(
+        id=str(uuid4()),
         numero_processo=numero_processo,
         valor_causa=valor_causa,
         autor_nome=autor_nome,
@@ -154,7 +156,7 @@ def create_case(
         status="pending",
     )
     db.add(case)
-    db.flush()
+    db.commit()
 
     storage_root = Path(get_settings().case_storage_dir)
     case_dir = storage_root / f"case_{case.id}"
@@ -163,6 +165,8 @@ def create_case(
     subsidios_count = _persist_uploads(subsidios, case_dir / "subsidios")
 
     case.source_folder = str(case_dir)
+    db.commit()
+
     analysis = analyze_case_documents(
         sorted((case_dir / "autos").glob("*.pdf")),
         sorted((case_dir / "subsidios").glob("*.pdf")),

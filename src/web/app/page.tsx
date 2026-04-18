@@ -28,8 +28,8 @@ export default function Home() {
               Interface do advogado para analisar casos e registrar decisões.
             </h1>
             <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-              Esta camada já pode ser usada com dados mockados enquanto o backend evolui. Quando os
-              contratos estabilizarem, a mesma navegação continua servindo para integração real.
+              O fluxo está preparado para ingestão real de PDFs, consulta da recomendação e registro
+              do outcome diretamente contra a API da stack local.
             </p>
           </div>
 
@@ -41,24 +41,24 @@ export default function Home() {
               Abrir inbox
             </Link>
             <Link
-              href="/caso/1"
+              href="/casos/novo"
               className="inline-flex h-11 items-center justify-center rounded-md border px-5 text-sm font-medium transition-colors hover:bg-muted"
             >
-              Ver caso exemplo
+              Ingerir caso
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl border bg-muted/40 p-5">
-          <p className="text-sm font-medium">Estado recomendado para P3 agora</p>
+          <p className="text-sm font-medium">Fluxo validado para teste local</p>
           <div className="mt-4 space-y-3 text-sm text-muted-foreground">
             <div className="rounded-xl border bg-background p-4">
-              <p className="font-medium text-foreground">Pode fechar já</p>
-              <p className="mt-1">UX, navegação, páginas do advogado, mocks e formulário de decisão.</p>
+              <p className="font-medium text-foreground">Entrada por documentos</p>
+              <p className="mt-1">Upload de autos e subsídios, persistência dos PDFs e abertura automática do caso.</p>
             </div>
             <div className="rounded-xl border bg-background p-4">
-              <p className="font-medium text-foreground">Esperar só se necessário</p>
-              <p className="mt-1">Integração final com recommendation real, judge e payload definitivo do outcome.</p>
+              <p className="font-medium text-foreground">Painel do advogado</p>
+              <p className="mt-1">Consulta do caso, recomendação atualizada e formulário de decisão final.</p>
             </div>
           </div>
         </div>

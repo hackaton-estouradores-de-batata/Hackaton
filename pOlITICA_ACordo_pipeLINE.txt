@@ -21,6 +21,9 @@ Escopo desta versao:
   3. Quantidade de documentos
   4. Taxa historica de sucesso
   5. Percentual medio pago abaixo do pedido por UF quando o banco perde
+- Para avaliacao historica e backtest, a V5 passa a ler tambem o
+  Resultado micro como regua economica de exito, nao exito e desconto
+  observado sobre o PED.
 
 
 2. O QUE MUDA NA V5
@@ -108,6 +111,36 @@ Regras:
 - SE -> 33%
 - TO -> 31%
 - RR -> sem historico proprio; usar desconto de 30% ate formar serie propria
+
+4.1.B. Regua nacional por Resultado micro
+
+Esta camada nao entra como feature do motor online.
+Ela serve para calibracao, leitura do historico e backtest economico.
+
+- procedente
+  - decisao historica de referencia = DEFESA
+  - leitura = nao exito
+  - desconto sobre o PED = 10%
+
+- parcial procedencia
+  - decisao historica de referencia = DEFESA
+  - leitura = nao exito parcial
+  - desconto sobre o PED = 38%
+
+- improcedente
+  - decisao historica de referencia = DEFESA
+  - leitura = exito
+  - desconto sobre o PED = 100%
+
+- extinto
+  - decisao historica de referencia = NULA
+  - leitura = exito sem merito
+  - desconto sobre o PED = 100%
+
+- acordo
+  - decisao historica de referencia = ACORDO
+  - leitura = ganho parcial por acordo
+  - desconto sobre o PED = 70%
 
 4.2. MATRIZ_GERAL_6D
 - AC -> 0=0% | 1=7%  | 2=12% | 3=38% | 4=70% | 5=87% | 6=98% | total=72%
@@ -453,6 +486,18 @@ Etapa 8
 Etapa 9
 - Gerar a saida para o advogado:
   decisao, P_SUC, P_PER, VPC, VEJ, ABERTURA, ALVO, TETO e justificativa curta.
+
+Etapa 10 - modo de avaliacao historica / backtest
+- Ler RESULTADO_MICRO quando o caso vier do historico de 60k.
+- Classificar o bucket economico:
+  procedente, parcial procedencia, improcedente, extinto ou acordo.
+- Converter o bucket em:
+  decisao historica de referencia, exito/não exito e desconto sobre o PED.
+- Comparar o custo esperado da politica com o custo historico observado.
+
+Observacao:
+- RESULTADO_MICRO nao deve ser usado para decidir o caso online.
+- RESULTADO_MICRO eh camada de avaliacao ex post.
 
 
 9. EXEMPLO DETALHADO A - ACORDO
