@@ -1,17 +1,23 @@
 # Setup
 
-## Requisitos
+## 1. Requisitos
 
 - Docker
 - Docker Compose
 
-## Variáveis
+## 2. Preparar as variáveis de ambiente
 
-Crie o arquivo `.env` a partir de `.env.example`.
+Na raiz do repositório:
+
+```bash
+cp .env.example .env
+```
+
+Revise o arquivo `.env` e ajuste apenas se necessário.
 
 `OPENAI_API_KEY` é opcional para subir o sistema. Sem a chave, a API usa fallbacks heurísticos e embeddings locais para desenvolvimento e testes.
 
-## Subir a stack
+## 3. Subir a stack
 
 Rode tudo a partir da raiz do repositório.
 
@@ -21,7 +27,24 @@ docker compose up -d
 docker compose ps
 ```
 
-## Preparar a base histórica
+## 4. Validar se a aplicação subiu
+
+Confira os endpoints principais:
+
+```bash
+curl http://127.0.0.1:8000/healthz
+curl http://127.0.0.1:8000/api/cases
+curl -I http://127.0.0.1:3000/inbox
+```
+
+Abra no navegador:
+
+- `http://127.0.0.1:3000/inbox`
+- `http://127.0.0.1:3000/dashboard`
+
+## 5. Preparar a base histórica (opcional)
+
+Esta etapa é útil para analytics, embeddings e backtest. Não é obrigatória para apenas subir a aplicação.
 
 Gere o índice histórico e rode a análise do CSV dentro do container `api`.
 
@@ -36,7 +59,7 @@ Se quiser gerar embeddings reais com a OpenAI:
 docker compose run --rm -v "$PWD:/workspace" api python /workspace/src/scripts/build_embeddings.py --provider openai
 ```
 
-## Smoke tests
+## 6. Rodar os smoke tests
 
 Execute os smoke tests da API dentro do container:
 
@@ -50,15 +73,7 @@ for name in sorted(key for key in namespace if key.startswith('test_')):
 PY
 ```
 
-## Validação básica
-
-```bash
-curl http://127.0.0.1:8000/healthz
-curl http://127.0.0.1:8000/api/cases
-curl -I http://127.0.0.1:3000/inbox
-```
-
-## Teste fim a fim
+## 7. Teste fim a fim de ingestão
 
 Ingestão de um caso exemplo:
 
@@ -79,7 +94,9 @@ Depois consulte a recomendação:
 curl http://127.0.0.1:8000/api/cases/<CASE_ID>/recommendation
 ```
 
-## Encerrar
+Se quiser, depois abra o caso na interface do advogado pelo `id` retornado na ingestão.
+
+## 8. Encerrar o ambiente
 
 ```bash
 docker compose down

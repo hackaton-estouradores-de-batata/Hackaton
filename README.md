@@ -13,6 +13,15 @@ Este projeto propoe uma plataforma web para apoiar a tomada de decisao juridica 
 
 O objetivo e transformar uma analise hoje manual, lenta e heterogenea em um fluxo auditavel, escalavel e orientado por dados.
 
+## Acesso Rapido
+
+- Execucao local: [SETUP.md](SETUP.md)
+- Arquitetura atual: [docs/architecture.md](docs/architecture.md)
+- Guia detalhado: [docs/guides/PROJECT_SKELETON.md](docs/guides/PROJECT_SKELETON.md)
+- Planejamento: [docs/guides/TEAM.md](docs/guides/TEAM.md)
+- Video demo: [docs/demo_video.mp4](docs/demo_video.mp4)
+- Slides: [docs/slides/README.md](docs/slides/README.md)
+
 ## Problema
 
 Em litigios massificados, o custo de analisar cada processo em profundidade e alto. Isso gera:
@@ -70,11 +79,11 @@ Com isso, o sistema pode classificar casos com perfil de:
 - acordo prioritario, quando ha fragilidade probatoria ou alto risco de condenacao;
 - zona cinzenta, quando a recomendacao depende de score, contexto e historico.
 
-## Arquitetura Sugerida
+## Arquitetura Atual
 
 ### Frontend
 
-- Next.js 15
+- Next.js 16
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
@@ -114,7 +123,7 @@ Responsabilidades principais:
 - armazenamento local de arquivos no MVP;
 - possibilidade de evolucao para S3-compatible.
 
-## Estrutura Esperada do Projeto
+## Estrutura Atual do Projeto
 
 ```text
 hackathon-ufmg-2026-grupoN/
@@ -128,6 +137,9 @@ hackathon-ufmg-2026-grupoN/
 │   └── scripts/
 ├── data/
 ├── docs/
+│   ├── architecture.md
+│   ├── demo_video.mp4
+│   ├── guides/
 │   └── slides/
 ```
 
@@ -136,8 +148,8 @@ Organizacao conceitual:
 - `src/web`: experiencia do advogado e dashboard do banco;
 - `src/api`: pipeline, regras, servicos e APIs;
 - `src/policy/`: politica versionada de acordos;
-- `data/`: casos de exemplo e base historica;
-- `docs/`: arquitetura, racional juridico, apresentacao e demo;
+- `data/`: banco local, documentos cadastrados e base historica;
+- `docs/`: arquitetura, video demo, guias e apresentacao;
 - `docs/slides/`: app isolada da apresentacao;
 - `src/scripts/`: seed, analise historica e avaliacao da politica.
 
@@ -186,29 +198,29 @@ O banco acompanha metricas de aderencia a recomendacao, taxa de acordo, efetivid
 
 ## Status do Repositorio
 
-No estado atual, este repositorio contem a documentacao-base da proposta e os primeiros artefatos da Sprint 0 da frente P2:
+No estado atual, este repositorio contem um MVP funcional com:
 
-- `README.md`
-- `PROJECT_SKELETON.md`
-- `TEAM.md`
+- `src/web/`: inbox do advogado, tela de caso e dashboard do banco
+- `src/api/`: ingestao, recomendacao, outcomes e analytics
+- `src/policy/`: politica e materiais correlatos
 - `src/scripts/analyze_historical.py`
+- `src/scripts/build_embeddings.py`
+- `src/scripts/eval_policy.py`
 - `data/sentencas_60k.csv`
-- `data/processos_exemplo/caso_001/mock_case.json`
-- `data/processos_exemplo/caso_002/mock_case.json`
-- `docs/p2_sprint0_verification.md`
+- `docs/architecture.md`
+- `docs/demo_video.mp4`
+- `docs/slides/`
+- `docs/guides/`
 
-A estrutura descrita acima representa o desenho alvo do MVP e da evolucao do projeto.
+A estrutura acima representa o estado atual do projeto e os materiais de entrega já organizados.
 
 ## Proximos Passos
 
-1. Estruturar monorepo com `src/web` e `src/api`.
-2. Definir schemas do dominio e contrato das APIs.
-3. Criar pipeline de ingestao e extracao dos PDFs.
-4. Implementar `src/policy/acordos_v1.yaml` com regras iniciais.
-5. Construir tela de recomendacao para o advogado.
-6. Adicionar dashboard com aderencia e efetividade.
-7. Validar a politica contra base historica e casos de exemplo.
+1. Consolidar a documentacao em `docs/architecture.md` e `docs/guides/`.
+2. Evoluir a politica e o backtest economico da V5.
+3. Refinar analytics e cortes financeiros do dashboard.
+4. Preparar a transicao de SQLite/local storage para stack de producao.
 
 ## Referencia
 
-Este README foi reconstruido a partir do documento `PROJECT_SKELETON.md`, consolidando a proposta de produto, arquitetura e direcao tecnica do projeto.
+Este README resume o estado atual do MVP. Para detalhes tecnicos e de execucao, use `SETUP.md`, `docs/architecture.md` e os arquivos em `docs/guides/`.
