@@ -16,3 +16,19 @@ docs/slides/.next/
 data/embeddings.faiss
 data/embeddings.npy
 data/embeddings_metadata.json
+
+# Config local de agentes de IA
+.claude/settings.local.json
+.openclaude/settings.local.json
+.codex
+.vscode/mcp.json
+
+# Estado local de ferramentas/agentes
+.vexp/daemon.log
+.vexp/daemon.pid
+.vexp/mcp.port
+.vexp/mcp.token
+.vexp/healthy
+.vexp/index.db
+.vexp/index.db-shm
+.vexp/index.db-wal
