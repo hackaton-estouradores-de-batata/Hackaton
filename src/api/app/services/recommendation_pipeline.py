@@ -6,6 +6,7 @@ from typing import Any
 from app.analytics.historical import summarize_case_history
 from app.models.case import Case
 from app.models.recommendation import Recommendation
+from app.services.case_normalization import normalize_case_snapshot
 from app.services.decision_engine import build_recommendation_payload
 from app.services.judge import review_recommendation_with_judge
 from app.services.justifier import generate_recommendation_justification
@@ -15,7 +16,7 @@ TERMINAL_CASE_STATUSES = {"decided", "closed"}
 
 
 def case_snapshot(case: Case) -> dict[str, object]:
-    return {
+    snapshot = {
         "numero_processo": case.numero_processo,
         "valor_causa": case.valor_causa,
         "valor_pedido_danos_morais": case.valor_pedido_danos_morais,
@@ -31,6 +32,7 @@ def case_snapshot(case: Case) -> dict[str, object]:
         "forca_narrativa_autor": case.forca_narrativa_autor,
         "subsidios": case.subsidios,
     }
+    return normalize_case_snapshot(snapshot)
 
 
 def _decorate_policy_version(base_version: str, history_summary: dict[str, object]) -> str:

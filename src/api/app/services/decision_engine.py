@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+from app.services.case_normalization import coerce_list
 from app.services.value_estimator import build_value_context, suggest_value_range
 
 CENTS = Decimal("0.01")
@@ -91,6 +92,7 @@ def _evaluate_policy_rules(
 def adjust_score(base_score: float, case_data: dict[str, Any], policy: dict[str, Any]) -> float:
     adjusted = base_score
     features_policy = policy.get("features", {})
+    red_flags = coerce_list(case_data.get("red_flags"))
 
     if case_data.get("vulnerabilidade_autor") and case_data.get("vulnerabilidade_autor") != "nenhuma":
         adjusted -= float(features_policy.get("penalidade_vulnerabilidade", 0.10))
@@ -102,7 +104,7 @@ def adjust_score(base_score: float, case_data: dict[str, Any], policy: dict[str,
     else:
         adjusted -= indicio_fraude * float(features_policy.get("penalidade_indicio_fraude", 0.0))
 
-    adjusted -= len(case_data.get("red_flags", [])) * float(
+    adjusted -= len(red_flags) * float(
         features_policy.get("penalidade_por_red_flag", 0.04)
     )
     adjusted -= float(case_data.get("forca_narrativa_autor", 0.0) or 0.0) * float(

@@ -5,6 +5,7 @@ from app.db import get_db
 from app.models.case import Case
 from app.models.recommendation import Recommendation
 from app.schemas.recommendation import RecommendationRead
+from app.services.case_normalization import normalize_case_record
 from app.services import apply_recommendation_payload, build_recommendation_for_case, sync_case_status
 
 router = APIRouter(prefix="/api/cases", tags=["recommendations"])
@@ -26,7 +27,7 @@ def _normalize_recommendation(recommendation: Recommendation) -> Recommendation:
 
 @router.get("/{case_id}/recommendation", response_model=RecommendationRead)
 def get_recommendation(case_id: str, db: Session = Depends(get_db)) -> RecommendationRead:
-    case = _get_case_or_404(db, case_id)
+    case = normalize_case_record(_get_case_or_404(db, case_id))
     recommendation = (
         db.query(Recommendation)
         .filter(Recommendation.case_id == case.id)

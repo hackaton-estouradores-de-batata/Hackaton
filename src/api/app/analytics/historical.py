@@ -17,8 +17,10 @@ except Exception:  # pragma: no cover - import guard for non-runtime tooling
 
 from app.analytics.semantic import (
     LOCAL_EMBEDDING_DIMENSIONS,
-    build_case_document_text,
+    LOCAL_EMBEDDING_MODEL,
+    SEMANTIC_TEXT_STRATEGY,
     build_local_embedding,
+    build_runtime_case_text,
     normalize_embedding_array,
 )
 from app.core.config import get_settings
@@ -64,6 +66,7 @@ class SemanticIndexMetadata:
     model: str
     dimensions: int
     row_count: int
+    text_strategy: str
 
 
 RESULTADOS_VITORIA = {
@@ -163,6 +166,7 @@ def _load_legacy_metadata(raw_payload: Any, matrix: np.ndarray | None) -> Semant
         model="legacy-stub-v0",
         dimensions=dimensions,
         row_count=len(raw_payload),
+        text_strategy="legacy-unknown",
     )
 
 
@@ -175,18 +179,20 @@ def load_semantic_index_metadata() -> SemanticIndexMetadata | None:
             return None
         return SemanticIndexMetadata(
             provider="local",
-            model="local-semantic-v1",
+            model=LOCAL_EMBEDDING_MODEL,
             dimensions=int(matrix.shape[1]),
             row_count=int(matrix.shape[0]),
+            text_strategy=SEMANTIC_TEXT_STRATEGY,
         )
 
     payload = json.loads(metadata_path.read_text(encoding="utf-8"))
     if isinstance(payload, dict):
         return SemanticIndexMetadata(
             provider=str(payload.get("provider", "local")),
-            model=str(payload.get("model", "local-semantic-v1")),
+            model=str(payload.get("model", LOCAL_EMBEDDING_MODEL)),
             dimensions=int(payload.get("dimensions") or (matrix.shape[1] if matrix is not None else 0)),
             row_count=int(payload.get("row_count") or (matrix.shape[0] if matrix is not None else 0)),
+            text_strategy=str(payload.get("text_strategy") or SEMANTIC_TEXT_STRATEGY),
         )
     return _load_legacy_metadata(payload, matrix)
 
@@ -307,7 +313,7 @@ def _serialize_match(item: HistoricalCaseMatch) -> dict[str, object]:
 
 
 def _semantic_query_text(case: Case) -> str:
-    return build_case_document_text(
+    return build_runtime_case_text(
         numero_processo=case.numero_processo,
         uf=case.uf,
         assunto=case.assunto,
@@ -318,14 +324,40 @@ def _semantic_query_text(case: Case) -> str:
         red_flags=case.red_flags,
         vulnerabilidade_autor=case.vulnerabilidade_autor,
         subsidios=case.subsidios or {},
-        body_text=case.case_text,
+        case_text=case.case_text,
     )
 
 
+def _provider_family(value: str | None) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized.startswith("legacy"):
+        return "local"
+    if normalized.startswith("local"):
+        return "local"
+    if normalized.startswith("openai"):
+        return "openai"
+    return normalized
+
+
+def _can_reuse_existing_embedding(case: Case, metadata: SemanticIndexMetadata) -> bool:
+    existing_embedding = list(case.embedding or [])
+    if not existing_embedding or len(existing_embedding) != metadata.dimensions:
+        return False
+
+    if getattr(case, "embedding_source", None) != metadata.text_strategy:
+        return False
+    if _provider_family(getattr(case, "embedding_provider", None)) != _provider_family(metadata.provider):
+        return False
+    if str(getattr(case, "embedding_model", "") or "") != metadata.model:
+        return False
+    if int(getattr(case, "embedding_dimensions", 0) or 0) != metadata.dimensions:
+        return False
+    return True
+
+
 def _build_query_embedding(case: Case, metadata: SemanticIndexMetadata) -> np.ndarray | None:
-    existing_embedding = case.embedding or []
-    if existing_embedding and len(existing_embedding) == metadata.dimensions:
-        return normalize_embedding_array(np.asarray(existing_embedding, dtype=np.float32))
+    if _can_reuse_existing_embedding(case, metadata):
+        return normalize_embedding_array(np.asarray(case.embedding, dtype=np.float32))
 
     semantic_text = _semantic_query_text(case)
     if not semantic_text:
@@ -334,12 +366,21 @@ def _build_query_embedding(case: Case, metadata: SemanticIndexMetadata) -> np.nd
     if metadata.provider.startswith("local") or metadata.provider.startswith("legacy"):
         return build_local_embedding(semantic_text, dimensions=metadata.dimensions)
 
-    from app.llm.client import embed_peticao
+    from app.llm.client import build_embedding_payload
 
-    vector = np.asarray(embed_peticao(semantic_text), dtype=np.float32)
+    payload = build_embedding_payload(
+        semantic_text,
+        provider=metadata.provider,
+        model=metadata.model,
+        allow_local_fallback=False,
+    )
+    if payload is None:
+        return None
+
+    vector = np.asarray(payload["vector"], dtype=np.float32)
     if vector.size == metadata.dimensions:
         return normalize_embedding_array(vector)
-    return build_local_embedding(semantic_text, dimensions=metadata.dimensions)
+    return None
 
 
 def _normalized_semantic_score(score: float) -> float:
@@ -502,12 +543,12 @@ def summarize_mock_file(mock_file: Path, k: int = 5) -> dict[str, object]:
         indicio_fraude=float(payload.get("indicio_fraude") or 0.0),
         forca_narrativa_autor=float(payload.get("forca_narrativa_autor") or 0.0),
         subsidios=dict(payload.get("subsidios") or {}),
-        case_text=build_case_document_text(
+        case_text=build_runtime_case_text(
             numero_processo=payload.get("numero_processo"),
             valor_causa=payload.get("valor_causa"),
             alegacoes=list(payload.get("alegacoes") or []),
             pedidos=list(payload.get("pedidos") or []),
-            body_text="\n".join(payload.get("alegacoes") or []),
+            case_text="\n".join(payload.get("alegacoes") or []),
             subsidios=dict(payload.get("subsidios") or {}),
         ),
     )

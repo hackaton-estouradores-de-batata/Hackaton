@@ -4,7 +4,7 @@ import { CaseViewer } from "@/components/CaseViewer"
 import { CaseDocumentsViewer } from "@/components/CaseDocumentsViewer"
 import { RecommendationCard } from "@/components/RecommendationCard"
 import { OutcomeForm } from "@/components/OutcomeForm"
-import { ArrowLeft, ChevronRight, Scale } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ChevronRight, FileWarning, Scale } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
@@ -14,7 +14,21 @@ interface Props {
 
 export default async function CasoPage({ params }: Props) {
   const { id } = await params
-  const [caso, rec, documents] = await Promise.all([getCase(id), getRecommendation(id), getCaseDocuments(id)])
+  const [caseResult, recommendationResult, documentsResult] = await Promise.allSettled([
+    getCase(id),
+    getRecommendation(id),
+    getCaseDocuments(id),
+  ])
+
+  if (caseResult.status !== "fulfilled") {
+    throw caseResult.reason
+  }
+
+  const caso = caseResult.value
+  const rec = recommendationResult.status === "fulfilled" ? recommendationResult.value : null
+  const documents = documentsResult.status === "fulfilled" ? documentsResult.value : []
+  const recommendationError = recommendationResult.status === "rejected" ? "A recomendação deste caso não pôde ser carregada agora." : null
+  const documentsError = documentsResult.status === "rejected" ? "Os documentos deste caso não puderam ser carregados agora." : null
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-8 px-6 py-8">
@@ -55,6 +69,7 @@ export default async function CasoPage({ params }: Props) {
             <CaseViewer caso={caso} />
           </div>
           <div className="rounded-3xl border border-border/50 bg-background/50 p-1 shadow-sm backdrop-blur-md">
+            {documentsError && <DocumentsWarning message={documentsError} />}
             <CaseDocumentsViewer documents={documents} />
           </div>
         </div>
@@ -63,14 +78,48 @@ export default async function CasoPage({ params }: Props) {
         <div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4">
           <div className="sticky top-24 space-y-6">
             <div className="rounded-3xl border border-primary/20 bg-primary/5 p-1 shadow-2xl shadow-primary/10 backdrop-blur-md">
-              <RecommendationCard rec={rec} />
+              {rec ? <RecommendationCard rec={rec} /> : <RecommendationUnavailable message={recommendationError} />}
             </div>
             <div className="rounded-3xl border border-border/50 bg-background/50 p-1 shadow-lg shadow-black/5 backdrop-blur-md">
-              <OutcomeForm caseId={id} recomendacao={rec.decisao} />
+              <OutcomeForm caseId={id} recomendacao={rec?.decisao} caseStatus={caso.status} />
             </div>
           </div>
         </div>
 
+      </div>
+    </div>
+  )
+}
+
+function RecommendationUnavailable({ message }: { message: string | null }) {
+  return (
+    <div className="rounded-3xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-sm text-yellow-900 dark:text-yellow-100">
+      <div className="flex items-start gap-3">
+        <div className="rounded-xl bg-yellow-500/10 p-2 text-yellow-600 dark:text-yellow-300">
+          <AlertTriangle className="h-5 w-5" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-yellow-700 dark:text-yellow-300">
+            Recomendação indisponível
+          </p>
+          <p className="font-medium">
+            {message ?? "A recomendação deste caso não está disponível no momento."}
+          </p>
+          <p className="text-xs text-yellow-700/80 dark:text-yellow-200/80">
+            O caso continua acessível para consulta e você ainda pode registrar a decisão final.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DocumentsWarning({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-900 dark:text-yellow-100">
+      <div className="flex items-start gap-2">
+        <FileWarning className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-300" />
+        <p>{message}</p>
       </div>
     </div>
   )

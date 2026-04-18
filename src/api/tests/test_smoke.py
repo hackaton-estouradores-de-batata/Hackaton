@@ -2,10 +2,30 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
-from app.analytics.historical import load_semantic_index_metadata, summarize_mock_file
-from app.analytics.semantic import LOCAL_EMBEDDING_DIMENSIONS
+from app.analytics.historical import (
+    SemanticIndexMetadata,
+    _build_query_embedding,
+    load_semantic_index_metadata,
+    summarize_mock_file,
+)
+from app.analytics.semantic import (
+    LOCAL_EMBEDDING_DIMENSIONS,
+    LOCAL_EMBEDDING_MODEL,
+    SEMANTIC_TEXT_STRATEGY,
+    build_local_embedding_list,
+    build_runtime_case_text,
+)
 from app.core.config import get_settings
+from app.llm.client import (
+    HISTORY_ASSUNTO_DEFAULT,
+    HISTORY_SUBASSUNTO_GENERIC,
+    HISTORY_SUBASSUNTO_GOLPE,
+    heuristic_extract_case_context,
+)
+from app.models.case import Case
 from app.services import analyze_case_documents
+from app.services.case_maintenance import apply_analysis_to_case
+from app.services.case_sanitizer import repair_case, sanitize_cases
 from app.services.decision_engine import build_recommendation_payload
 from app.services.judge import review_recommendation_with_judge
 from app.services.justifier import generate_recommendation_justification
@@ -50,6 +70,11 @@ EXAMPLE_CASES = {
             / "07_Laudo_Referenciado.pdf",
         ],
         "numero_processo": "0801234-56.2024.8.10.0001",
+        "autor_nome": "MARIA DAS GRAÇAS SILVA PEREIRA",
+        "autor_cpf": "456.789.123-45",
+        "uf": "MA",
+        "assunto": HISTORY_ASSUNTO_DEFAULT,
+        "sub_assunto": HISTORY_SUBASSUNTO_GENERIC,
     },
     "caso_002": {
         "autos": [
@@ -73,6 +98,11 @@ EXAMPLE_CASES = {
             / "04_Laudo_Referenciado.pdf",
         ],
         "numero_processo": "0654321-09.2024.8.04.0001",
+        "autor_nome": "JOSÉ RAIMUNDO OLIVEIRA COSTA",
+        "autor_cpf": "789.123.456-78",
+        "uf": "AM",
+        "assunto": HISTORY_ASSUNTO_DEFAULT,
+        "sub_assunto": HISTORY_SUBASSUNTO_GOLPE,
     },
 }
 
@@ -109,10 +139,15 @@ def test_extraction_pipeline_runs_on_example_cases_without_llm() -> None:
             payload = analyze_case_documents(fixture["autos"], fixture["subsidios"])
 
         assert payload["autos_data"]["numero_processo"] == fixture["numero_processo"]
+        assert payload["autos_data"]["autor_nome"] == fixture["autor_nome"]
+        assert payload["autos_data"]["autor_cpf"] == fixture["autor_cpf"]
         assert payload["autos_data"]["valor_causa"] is not None
         assert payload["subsidios_data"]
         assert payload["features_data"]["red_flags"] is not None
         assert payload["structured_features"]["case_text"]
+        assert payload["structured_features"]["uf"] == fixture["uf"]
+        assert payload["structured_features"]["assunto"] == fixture["assunto"]
+        assert payload["structured_features"]["sub_assunto"] == fixture["sub_assunto"]
         assert len(payload["embedding"]) == LOCAL_EMBEDDING_DIMENSIONS
 
 
@@ -127,11 +162,288 @@ def test_historical_summary_for_mock_cases_has_similares() -> None:
         assert "prob_vitoria" in summary["stats"]
 
 
+def test_context_fallback_handles_missing_text_without_false_positive() -> None:
+    payload = heuristic_extract_case_context(
+        "",
+        "",
+        {
+            "numero_processo": "0000001-00.2024.8.01.0001",
+            "autor_nome": "FULANO DE TAL",
+            "alegacoes": [],
+            "pedidos": [],
+        },
+        {},
+        {"red_flags": [], "indicio_fraude": 0.0},
+        filenames=["01_Autos_Processo.pdf", "02_Contrato.pdf"],
+    )
+
+    assert payload["uf"] is None
+    assert payload["assunto"] is None
+    assert payload["sub_assunto"] is None
+    assert payload["ocr_recommended"] is True
+    assert "Documentos recebidos" in payload["case_text"]
+
+
+def test_apply_analysis_preserves_terminal_status_and_embedding_metadata() -> None:
+    case = Case(
+        id="closed-case",
+        status="closed",
+        source_folder="/app/data/processos_exemplo/case_closed-case",
+    )
+    apply_analysis_to_case(
+        case,
+        {
+            "autos_data": {
+                "numero_processo": "0000001-00.2024.8.01.0001",
+                "autor_nome": "FULANO DE TAL",
+                "autor_cpf": "123.456.789-00",
+                "valor_causa": 1000,
+                "alegacoes": ["teste"],
+                "pedidos": ["pedido"],
+                "valor_danos_morais": 500,
+            },
+            "subsidios_data": {"tem_contrato": True},
+            "features_data": {
+                "red_flags": ["flag"],
+                "vulnerabilidade_autor": "idoso",
+                "indicio_fraude": 0.2,
+                "forca_narrativa_autor": 0.4,
+                "inconsistencias_temporais": [],
+            },
+            "embedding": [0.1] * LOCAL_EMBEDDING_DIMENSIONS,
+            "embedding_provider": "local",
+            "embedding_model": LOCAL_EMBEDDING_MODEL,
+            "embedding_dimensions": LOCAL_EMBEDDING_DIMENSIONS,
+            "embedding_source": SEMANTIC_TEXT_STRATEGY,
+            "autos_text": "texto autos",
+            "subsidios_text": "texto subsidios",
+            "structured_features": {
+                "uf": "MA",
+                "assunto": HISTORY_ASSUNTO_DEFAULT,
+                "sub_assunto": HISTORY_SUBASSUNTO_GENERIC,
+                "case_text": "resumo semantico",
+            },
+        },
+    )
+
+    assert case.status == "closed"
+    assert case.embedding_source == SEMANTIC_TEXT_STRATEGY
+    assert case.embedding_model == LOCAL_EMBEDDING_MODEL
+    assert case.source_folder.endswith("/data/processos_exemplo/case_closed-case")
+
+
+def test_repair_case_reanalyzes_legacy_payload_with_canonical_source_folder() -> None:
+    case = Case(
+        id="legacy-repair",
+        status="pending",
+        source_folder="/app/data/processos_exemplo/case_legacy-repair",
+    )
+    analysis = {
+        "autos_data": {
+            "numero_processo": "0654321-09.2024.8.04.0001",
+            "autor_nome": "JOSÉ RAIMUNDO OLIVEIRA COSTA",
+            "autor_cpf": "789.123.456-78",
+            "valor_causa": 25000,
+            "alegacoes": ["não reconhece contratação"],
+            "pedidos": ["declaração de inexistência de débito"],
+            "valor_danos_morais": 15000,
+        },
+        "subsidios_data": {
+            "tem_contrato": False,
+            "tem_comprovante": True,
+            "tem_dossie": False,
+        },
+        "features_data": {
+            "red_flags": ["ausencia_contrato"],
+            "vulnerabilidade_autor": "nenhuma",
+            "indicio_fraude": 0.25,
+            "forca_narrativa_autor": 0.7,
+            "inconsistencias_temporais": [],
+        },
+        "embedding": [0.1] * LOCAL_EMBEDDING_DIMENSIONS,
+        "embedding_provider": "local",
+        "embedding_model": LOCAL_EMBEDDING_MODEL,
+        "embedding_dimensions": LOCAL_EMBEDDING_DIMENSIONS,
+        "embedding_source": SEMANTIC_TEXT_STRATEGY,
+        "autos_text": "texto autos",
+        "subsidios_text": "texto subsidios",
+        "structured_features": {
+            "uf": "AM",
+            "assunto": HISTORY_ASSUNTO_DEFAULT,
+            "sub_assunto": HISTORY_SUBASSUNTO_GOLPE,
+            "case_text": "resumo semântico",
+        },
+    }
+    canonical_dir = DATA_DIR / "processos_exemplo" / "case_legacy-repair"
+
+    with patch(
+        "app.services.case_sanitizer.canonical_case_directory",
+        return_value=canonical_dir,
+    ), patch(
+        "app.services.case_sanitizer.list_case_document_paths",
+        return_value=([canonical_dir / "autos" / "01.pdf"], [canonical_dir / "subsidios" / "02.pdf"]),
+    ), patch(
+        "app.services.case_sanitizer._analyze_case_documents",
+        return_value=analysis,
+    ):
+        result = repair_case(case, allow_llm=False)
+
+    assert result["reanalyzed"] is True
+    assert result["autos_count"] == 1
+    assert result["subsidios_count"] == 1
+    assert case.status == "analyzed"
+    assert case.source_folder == str(canonical_dir)
+    assert case.uf == "AM"
+    assert case.assunto == HISTORY_ASSUNTO_DEFAULT
+    assert case.sub_assunto == HISTORY_SUBASSUNTO_GOLPE
+    assert case.embedding_source == SEMANTIC_TEXT_STRATEGY
+
+
+def test_sanitize_cases_dry_run_rolls_back_changes() -> None:
+    case = Case(
+        id="legacy-dry-run",
+        status="pending",
+        source_folder="/app/data/processos_exemplo/case_legacy-dry-run",
+    )
+
+    class FakeQuery:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def order_by(self, *_args, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def all(self):
+            return self._rows
+
+    class FakeSession:
+        def __init__(self, rows):
+            self._rows = rows
+            self.committed = False
+            self.rolled_back = False
+            self.closed = False
+
+        def query(self, _model):
+            return FakeQuery(self._rows)
+
+        def commit(self):
+            self.committed = True
+
+        def rollback(self):
+            self.rolled_back = True
+
+        def close(self):
+            self.closed = True
+
+    fake_session = FakeSession([case])
+
+    def fake_repair(target_case: Case, *, allow_llm: bool) -> dict[str, object]:
+        assert allow_llm is False
+        before = {
+            "status": target_case.status,
+            "source_folder": target_case.source_folder,
+            "uf": target_case.uf,
+            "assunto": target_case.assunto,
+            "sub_assunto": target_case.sub_assunto,
+            "embedding_source": getattr(target_case, "embedding_source", None),
+        }
+        target_case.status = "analyzed"
+        target_case.source_folder = "/workspace/data/processos_exemplo/case_legacy-dry-run"
+        target_case.uf = "MA"
+        target_case.assunto = HISTORY_ASSUNTO_DEFAULT
+        target_case.sub_assunto = HISTORY_SUBASSUNTO_GENERIC
+        target_case.embedding_source = SEMANTIC_TEXT_STRATEGY
+        return {
+            "before": before,
+            "autos_count": 1,
+            "subsidios_count": 0,
+            "reanalyzed": True,
+        }
+
+    with patch(
+        "app.services.case_sanitizer.SessionLocal",
+        return_value=fake_session,
+    ), patch(
+        "app.services.case_sanitizer.repair_case",
+        side_effect=fake_repair,
+    ), patch(
+        "app.services.case_sanitizer.upsert_case_recommendation",
+        return_value=None,
+    ):
+        payload = sanitize_cases(dry_run=True)
+
+    assert payload["dry_run"] is True
+    assert payload["total_cases"] == 1
+    assert fake_session.rolled_back is True
+    assert fake_session.committed is False
+    assert fake_session.closed is True
+    assert payload["updated_cases"][0]["changed"]["status"] == {
+        "before": "pending",
+        "after": "analyzed",
+    }
+    assert payload["updated_cases"][0]["changed"]["source_folder"] == {
+        "before": "/app/data/processos_exemplo/case_legacy-dry-run",
+        "after": "/workspace/data/processos_exemplo/case_legacy-dry-run",
+    }
+
+
 def test_semantic_index_metadata_is_available() -> None:
     metadata = load_semantic_index_metadata()
     assert metadata is not None
     assert metadata.dimensions > 0
     assert metadata.row_count > 1000
+
+
+def test_query_embedding_recomputes_for_legacy_case_representation() -> None:
+    case = Case(
+        id="legacy-case",
+        numero_processo="0801234-56.2024.8.10.0001",
+        valor_causa=Decimal("20000"),
+        uf="MA",
+        assunto=HISTORY_ASSUNTO_DEFAULT,
+        sub_assunto=HISTORY_SUBASSUNTO_GENERIC,
+        alegacoes=["nao reconhece a contratacao"],
+        pedidos=["declaracao de inexistencia de debito"],
+        red_flags=["ausencia_contrato"],
+        vulnerabilidade_autor="idoso",
+        subsidios={"tem_contrato": True, "tem_comprovante": True},
+        case_text="autora contesta emprestimo consignado com descontos no beneficio",
+        embedding=[0.5] * LOCAL_EMBEDDING_DIMENSIONS,
+        embedding_provider="local",
+        embedding_model=LOCAL_EMBEDDING_MODEL,
+        embedding_dimensions=LOCAL_EMBEDDING_DIMENSIONS,
+        embedding_source="legacy-raw-text-v1",
+        status="analyzed",
+    )
+    metadata = SemanticIndexMetadata(
+        provider="local",
+        model=LOCAL_EMBEDDING_MODEL,
+        dimensions=LOCAL_EMBEDDING_DIMENSIONS,
+        row_count=60000,
+        text_strategy=SEMANTIC_TEXT_STRATEGY,
+    )
+
+    expected_text = build_runtime_case_text(
+        numero_processo=case.numero_processo,
+        uf=case.uf,
+        assunto=case.assunto,
+        sub_assunto=case.sub_assunto,
+        valor_causa=case.valor_causa,
+        alegacoes=case.alegacoes,
+        pedidos=case.pedidos,
+        red_flags=case.red_flags,
+        vulnerabilidade_autor=case.vulnerabilidade_autor,
+        subsidios=case.subsidios,
+        case_text=case.case_text,
+    )
+    expected_vector = build_local_embedding_list(expected_text)
+    query_vector = _build_query_embedding(case, metadata)
+
+    assert query_vector is not None
+    assert query_vector.tolist() == expected_vector
 
 
 def test_policy_priority_rule_applies_for_fragile_subsidies() -> None:
@@ -168,6 +480,31 @@ def test_policy_priority_rule_applies_for_fragile_subsidies() -> None:
     assert "VAL-CORRESP" in payload["regras_aplicadas"]
     assert "VAL-IDOSO" in payload["regras_aplicadas"]
     assert payload["casos_similares_ids"] == ["hist-001", "hist-002", "hist-003"]
+
+
+def test_policy_engine_is_null_safe_for_legacy_case_data() -> None:
+    payload = build_recommendation_payload(
+        {
+            "valor_causa": None,
+            "valor_pedido_danos_morais": None,
+            "red_flags": None,
+            "vulnerabilidade_autor": None,
+            "indicio_fraude": None,
+            "forca_narrativa_autor": None,
+            "subsidios": None,
+        },
+        load_policy(),
+        history_summary=_history_summary(
+            prob_vitoria=0.20,
+            custo_medio_defesa="2500",
+            percentil_25="1000",
+            percentil_50="2000",
+        ),
+    )
+
+    assert payload["decisao"] in {"acordo", "defesa"}
+    assert isinstance(payload["regras_aplicadas"], list)
+    assert payload["confianca"] >= 0.35
 
 
 def test_ev_prefers_defesa_when_robustez_is_high_and_risk_is_lower() -> None:

@@ -9,6 +9,8 @@ from typing import Iterable, Mapping, Sequence
 import numpy as np
 
 LOCAL_EMBEDDING_DIMENSIONS = 64
+LOCAL_EMBEDDING_MODEL = f"local-semantic-v1-{LOCAL_EMBEDDING_DIMENSIONS}d"
+SEMANTIC_TEXT_STRATEGY = "case-document-text:v2"
 TOKEN_PATTERN = re.compile(r"[a-z0-9]{2,}")
 
 
@@ -74,6 +76,35 @@ def build_case_document_text(
             f"subsidios {' '.join(subsidios_tokens)}" if subsidios_tokens else None,
             body_text,
         ]
+    )
+
+
+def build_runtime_case_text(
+    *,
+    numero_processo: str | None = None,
+    uf: str | None = None,
+    assunto: str | None = None,
+    sub_assunto: str | None = None,
+    valor_causa: Decimal | float | int | str | None = None,
+    alegacoes: Sequence[str] | None = None,
+    pedidos: Sequence[str] | None = None,
+    red_flags: Sequence[str] | None = None,
+    vulnerabilidade_autor: str | None = None,
+    subsidios: Mapping[str, object] | None = None,
+    case_text: str | None = None,
+) -> str:
+    return build_case_document_text(
+        numero_processo=numero_processo,
+        uf=uf,
+        assunto=assunto,
+        sub_assunto=sub_assunto,
+        valor_causa=valor_causa,
+        alegacoes=alegacoes,
+        pedidos=pedidos,
+        red_flags=red_flags,
+        vulnerabilidade_autor=vulnerabilidade_autor,
+        subsidios=subsidios,
+        body_text=case_text,
     )
 
 

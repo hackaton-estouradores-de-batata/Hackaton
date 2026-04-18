@@ -1,17 +1,17 @@
 "use client"
 
-import { useState } from "react"
-import { Badge } from "@/components/ui/badge"
+import { useRouter } from "next/navigation"
+import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
 import { postOutcome } from "@/lib/api"
-import type { Decisao, OutcomePayload, ResultadoNegociacao, Sentenca } from "@/lib/types"
+import type { CaseStatus, Decisao, OutcomePayload, ResultadoNegociacao, Sentenca } from "@/lib/types"
 import { Save, CheckCircle, Scale, Gavel, Handshake, AlertCircle } from "lucide-react"
 
 interface Props {
   caseId: string
-  recomendacao: Decisao
+  recomendacao?: Decisao | null
+  caseStatus?: CaseStatus
   onSubmitted?: () => void
 }
 
@@ -57,7 +57,15 @@ function ToggleGroup<T extends string>({
   )
 }
 
-function InputField({ label, value, onChange, placeholder, prefix }: any) {
+interface InputFieldProps {
+  label: string
+  value: string
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder: string
+  prefix?: string
+}
+
+function InputField({ label, value, onChange, placeholder, prefix }: InputFieldProps) {
   return (
     <div className="space-y-1.5">
       <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</label>
@@ -75,7 +83,8 @@ function InputField({ label, value, onChange, placeholder, prefix }: any) {
   )
 }
 
-export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
+export function OutcomeForm({ caseId, recomendacao, caseStatus, onSubmitted }: Props) {
+  const router = useRouter()
   const [decisao, setDecisao] = useState<Decisao | null>(null)
   const [valor, setValor] = useState("")
   const [resultado, setResultado] = useState<ResultadoNegociacao | null>(null)
@@ -84,13 +93,17 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
   const [custos, setCustos] = useState("")
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isRefreshing, startTransition] = useTransition()
 
-  const seguiu = decisao === recomendacao
+  const seguiu = recomendacao ? decisao === recomendacao : null
+  const alreadyRegistered = caseStatus === "decided" || caseStatus === "closed"
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!decisao) return
     setLoading(true)
+    setError(null)
     const payload: OutcomePayload = {
       decisao_advogado: decisao,
       valor_proposto: valor ? parseFloat(valor) : null,
@@ -100,13 +113,21 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
       valor_condenacao: condenacao ? parseFloat(condenacao) : null,
       custos_processuais: custos ? parseFloat(custos) : null,
     }
-    await postOutcome(caseId, payload)
-    setLoading(false)
-    setDone(true)
-    onSubmitted?.()
+    try {
+      await postOutcome(caseId, payload)
+      setDone(true)
+      startTransition(() => {
+        router.refresh()
+        onSubmitted?.()
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível registrar a decisão final.")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (done) {
+  if (done || alreadyRegistered) {
     return (
       <Card className="border-none bg-transparent shadow-none">
         <CardContent className="flex flex-col items-center justify-center space-y-4 py-12 text-center">
@@ -114,8 +135,17 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
             <CheckCircle className="h-10 w-10 text-emerald-500 animate-in zoom-in duration-500" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-foreground">Decisão Registrada</h3>
-            <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">O outcome foi salvo e está retroalimentando o modelo para maior aderência.</p>
+            <h3 className="text-lg font-bold text-foreground">
+              {done ? "Decisão Registrada" : "Decisão Já Registrada"}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-[280px] mx-auto">
+              {done
+                ? "O outcome foi salvo e a página já está sendo atualizada com o novo status do caso."
+                : "Este caso já possui uma decisão final registrada e entrou no histórico do sistema."}
+            </p>
+            {isRefreshing && (
+              <p className="text-xs font-medium text-primary">Atualizando o painel do caso...</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -126,7 +156,11 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
     <Card className="border-none bg-transparent shadow-none">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg font-bold tracking-tight">Qual sua decisão?</CardTitle>
-        <CardDescription>O sistema registrará seu outcome para melhorar a IA.</CardDescription>
+        <CardDescription>
+          {recomendacao
+            ? "O sistema registrará seu outcome para medir aderência, efetividade e histórico decisório."
+            : "A recomendação deste caso não pôde ser carregada agora, mas você ainda pode registrar a decisão final."}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -148,7 +182,7 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
               labels={{ acordo: "ACORDO", defesa: "DEFESA" }}
               icons={{ acordo: <Handshake className="h-4 w-4" />, defesa: <Scale className="h-4 w-4" /> }}
             />
-            {decisao && (
+            {decisao && recomendacao && (
               <div className={`flex items-center gap-2 rounded-xl border p-3 text-sm transition-colors ${seguiu ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400" : "border-yellow-500/20 bg-yellow-500/5 text-yellow-600 dark:text-yellow-400"}`}>
                 {seguiu ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                 <span className="font-medium">{seguiu ? "Você seguiu a recomendação da IA" : "Você divergiu da recomendação da IA"}</span>
@@ -162,7 +196,7 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
                 <InputField 
                   label="Valor proposto" 
                   value={valor} 
-                  onChange={(e: any) => setValor(e.target.value)} 
+                  onChange={(event) => setValor(event.target.value)}
                   placeholder="0,00" 
                   prefix="R$"
                 />
@@ -199,23 +233,29 @@ export function OutcomeForm({ caseId, recomendacao, onSubmitted }: Props) {
                 </div>
                 {sentenca && sentenca !== "improcedente" && (
                   <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
-                    <InputField label="Condenação" value={condenacao} onChange={(e: any) => setCondenacao(e.target.value)} placeholder="0,00" prefix="R$" />
-                    <InputField label="Custos" value={custos} onChange={(e: any) => setCustos(e.target.value)} placeholder="0,00" prefix="R$" />
+                    <InputField label="Condenação" value={condenacao} onChange={(event) => setCondenacao(event.target.value)} placeholder="0,00" prefix="R$" />
+                    <InputField label="Custos" value={custos} onChange={(event) => setCustos(event.target.value)} placeholder="0,00" prefix="R$" />
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          <Button 
-            type="submit" 
-            disabled={!decisao || loading} 
+          {error && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={!decisao || loading || isRefreshing}
             className="w-full h-12 rounded-xl text-sm font-semibold tracking-wide transition-all data-[disabled=false]:hover:scale-[1.02] shadow-lg shadow-primary/20"
-            data-disabled={!decisao || loading}
+            data-disabled={!decisao || loading || isRefreshing}
           >
-            {loading ? (
+            {loading || isRefreshing ? (
               <span className="flex items-center gap-2">
-                <Spinner className="h-4 w-4" /> Salvando...
+                <Spinner className="h-4 w-4" /> {loading ? "Salvando..." : "Atualizando..."}
               </span>
             ) : (
               <span className="flex items-center gap-2">

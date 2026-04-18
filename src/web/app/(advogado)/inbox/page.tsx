@@ -2,6 +2,7 @@ import Link from "next/link"
 import { getCases } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/case-status"
+import { formatBRL } from "@/lib/utils"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ArrowRight, ExternalLink, Inbox, SearchCode } from "lucide-react"
 
@@ -103,9 +104,7 @@ export default async function InboxPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono text-sm">
-                    {c.valor_causa != null
-                      ? c.valor_causa.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-                      : "—"}
+                    {formatBRL(c.valor_causa)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[c.status]} className="rounded-full px-3 py-0.5 font-medium shadow-sm">

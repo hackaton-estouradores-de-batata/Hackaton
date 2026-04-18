@@ -8,4 +8,5 @@ src/api/.venv/
 src/api/data/*.db
 src/api/data/*.sqlite
 data/app.db
+data/hackathon.db
 data/processos_exemplo/case_*/

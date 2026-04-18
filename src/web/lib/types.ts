@@ -80,7 +80,7 @@ export interface CaseDocument {
 
 export interface CaseIngestResponse {
   id: string
-  status: string
+  status: CaseStatus
   source_folder: string | null
   autos_count: number
   subsidios_count: number

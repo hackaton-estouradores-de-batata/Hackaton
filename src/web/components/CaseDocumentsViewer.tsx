@@ -17,6 +17,8 @@ export function CaseDocumentsViewer({ documents }: Props) {
   const [selectedName, setSelectedName] = useState<string | null>(null)
 
   const selectedDocument = documents.find((doc) => doc.name === selectedName) ?? documents[0] ?? null
+  const previewUrl = selectedDocument ? encodeURI(selectedDocument.url) : null
+  const downloadUrl = selectedDocument ? encodeURI(`${selectedDocument.url}?download=1`) : null
 
   if (documents.length === 0) {
     return (
@@ -37,7 +39,7 @@ export function CaseDocumentsViewer({ documents }: Props) {
         {selectedDocument && (
           <div className="flex flex-wrap items-center gap-2">
             <a
-              href={encodeURI(selectedDocument.url)}
+              href={previewUrl ?? "#"}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-muted/50 px-4 py-2 text-xs font-semibold text-foreground transition-all hover:bg-muted hover:shadow-sm"
@@ -46,8 +48,8 @@ export function CaseDocumentsViewer({ documents }: Props) {
               Abrir
             </a>
             <a
-              href={encodeURI(selectedDocument.url)}
-              download
+              href={downloadUrl ?? "#"}
+              download={selectedDocument.display_name}
               className="inline-flex items-center gap-1.5 rounded-xl border border-border/50 bg-background px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-all hover:bg-muted"
             >
               <Download className="h-3.5 w-3.5" />
@@ -86,7 +88,7 @@ export function CaseDocumentsViewer({ documents }: Props) {
               <div className="aspect-[210/297] overflow-hidden rounded-xl border border-border/40 bg-zinc-100 shadow-sm sm:h-[800px] sm:aspect-auto">
                 <iframe
                   key={selectedDocument.name}
-                  src={encodeURI(selectedDocument.url)}
+                  src={previewUrl ?? undefined}
                   title={selectedDocument.display_name}
                   className="h-full w-full bg-transparent"
                 />

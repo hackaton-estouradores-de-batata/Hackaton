@@ -18,6 +18,8 @@ if str(API_DIR) not in sys.path:
 
 from app.analytics.semantic import (  # noqa: E402
     LOCAL_EMBEDDING_DIMENSIONS,
+    LOCAL_EMBEDDING_MODEL,
+    SEMANTIC_TEXT_STRATEGY,
     build_case_document_text,
     build_local_embedding,
     normalize_embedding_array,
@@ -72,11 +74,11 @@ def _resolve_provider(requested_provider: str) -> tuple[str, str]:
             raise RuntimeError("OPENAI_API_KEY ausente para provider openai.")
         return "openai", settings.embedding_model
     if requested_provider == "local":
-        return "local", f"local-semantic-v1-{LOCAL_EMBEDDING_DIMENSIONS}d"
+        return "local", LOCAL_EMBEDDING_MODEL
 
     if settings.openai_api_key:
         return "openai", settings.embedding_model
-    return "local", f"local-semantic-v1-{LOCAL_EMBEDDING_DIMENSIONS}d"
+    return "local", LOCAL_EMBEDDING_MODEL
 
 
 def _openai_embeddings(texts: list[str], *, batch_size: int, model: str) -> np.ndarray:
@@ -147,6 +149,7 @@ def main() -> None:
                 "dimensions": int(matrix.shape[1]),
                 "row_count": len(rows),
                 "csv_path": str(CSV_PATH),
+                "text_strategy": SEMANTIC_TEXT_STRATEGY,
             },
             ensure_ascii=False,
             indent=2,

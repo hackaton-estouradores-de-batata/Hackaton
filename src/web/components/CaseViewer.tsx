@@ -3,11 +3,8 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/case-status"
+import { formatBRL } from "@/lib/utils"
 import type { Case } from "@/lib/types"
-
-function brl(v: number) {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
-}
 
 export function CaseViewer({ caso }: { caso: Case }) {
   return (
@@ -26,7 +23,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-muted-foreground">Valor da causa</p>
-            <p className="font-semibold">{caso.valor_causa != null ? brl(caso.valor_causa) : "—"}</p>
+            <p className="font-semibold">{formatBRL(caso.valor_causa)}</p>
           </div>
           {caso.data_distribuicao && (
             <div>
@@ -39,7 +36,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
           {caso.valor_pedido_danos_morais != null && (
             <div>
               <p className="text-xs text-muted-foreground">Pedido danos morais</p>
-              <p className="font-semibold">{brl(caso.valor_pedido_danos_morais)}</p>
+              <p className="font-semibold">{formatBRL(caso.valor_pedido_danos_morais)}</p>
             </div>
           )}
           {caso.vulnerabilidade_autor && caso.vulnerabilidade_autor !== "nenhuma" && (
@@ -127,7 +124,6 @@ export function CaseViewer({ caso }: { caso: Case }) {
               {Object.entries(caso.subsidios).map(([key, value]) => {
                 const label = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())
                 let displayValue: React.ReactNode = String(value)
-                let valueColor = "text-muted-foreground"
                 if (typeof value === "boolean") {
                   if (value) {
                     displayValue = <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">✓ Presente</span>

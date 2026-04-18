@@ -24,19 +24,45 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+function toNumberOrNull(value: unknown): number | null {
+  if (value == null || value === "") return null
+  if (typeof value === "number") return Number.isFinite(value) ? value : null
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+function normalizeCase(casePayload: Case): Case {
+  return {
+    ...casePayload,
+    valor_causa: toNumberOrNull(casePayload.valor_causa as unknown),
+    valor_pedido_danos_morais: toNumberOrNull(casePayload.valor_pedido_danos_morais as unknown),
+  }
+}
+
+function normalizeRecommendation(recommendationPayload: Recommendation): Recommendation {
+  return {
+    ...recommendationPayload,
+    valor_sugerido_min: toNumberOrNull(recommendationPayload.valor_sugerido_min as unknown),
+    valor_sugerido_max: toNumberOrNull(recommendationPayload.valor_sugerido_max as unknown),
+  }
+}
+
 export async function getCases(): Promise<Case[]> {
   if (USE_MOCK) return MOCK_CASES
-  return request<Case[]>("/api/cases")
+  return (await request<Case[]>("/api/cases")).map(normalizeCase)
 }
 
 export async function getCase(id: string): Promise<Case> {
   if (USE_MOCK) return MOCK_CASES.find((c) => c.id === id) ?? MOCK_CASES[0]
-  return request<Case>(`/api/cases/${id}`)
+  return normalizeCase(await request<Case>(`/api/cases/${id}`))
 }
 
 export async function getRecommendation(id: string): Promise<Recommendation> {
   if (USE_MOCK) return { ...MOCK_RECOMMENDATION, case_id: id }
-  return request<Recommendation>(`/api/cases/${id}/recommendation`)
+  return normalizeRecommendation(await request<Recommendation>(`/api/cases/${id}/recommendation`))
 }
 
 export async function postOutcome(id: string, data: OutcomePayload): Promise<{ ok: boolean }> {

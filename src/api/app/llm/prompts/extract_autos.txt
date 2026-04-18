@@ -1,5 +1,7 @@
 Extraia dos autos um JSON com os campos:
 - numero_processo
+- autor_nome
+- autor_cpf
 - valor_causa
 - alegacoes
 - pedidos

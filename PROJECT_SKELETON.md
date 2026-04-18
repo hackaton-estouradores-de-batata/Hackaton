@@ -381,56 +381,59 @@ POST   /api/policy                       # Upload nova versão (admin)
 
 **Objetivo: entregar algo funcional em cada sprint. Nunca ficar mais de 2h sem algo rodando.**
 
-### Sprint 0 — Setup (1h)
-- [x] Repo criado pelo template (estrutura `src/`, `data/`, `docs/` já existe)
-- [x] `.env.example` com OPENAI_API_KEY, DATABASE_URL já presente
-- [x] Inicializar `src/web/` com Next.js 15 + Tailwind + shadcn/ui
-- [x] Inicializar `src/api/` com FastAPI + pyproject.toml (uv)
-- [x] Converter `sentencas_60k.xlsx` → `sentencas_60k.csv` (script único: `pandas read_excel → to_csv`)
+> Roadmap alinhado ao `TEAM.md`: Sprints 0–4 refletem o fluxo principal já implementado; Sprint 5 está parcial no runtime atual; Sprints 6–7 seguem pendentes.
 
-### Sprint 1 — Pipeline de extração + features ricas (3h)
-- [x] Endpoint `POST /api/cases` aceita PDFs
-- [x] Extractor lê PDF (`pdfplumber`) → texto
-- [x] LLM (gpt-4o-mini) extrai JSON estruturado básico (autos + subsídios)
-- [x] LLM (gpt-4o) extrai features ricas: `red_flags`, `vulnerabilidade_autor`, `indicio_fraude`, `forca_narrativa_autor`
-- [x] Gera embedding da petição (`text-embedding-3-large`)
-- [x] Persiste no DB (incluindo embedding)
-- [x] **Checkpoint**: rodar nos 2 casos exemplo e validar JSON + features
+### Sprint 0 — Setup (1h) · Todos
+- [x] Repo-base, `.env.example`, `src/web/` e `src/api/` inicializados
+- [x] Schema SQLite criado para `cases`, `recommendations` e `outcomes`
+- [x] Conversão `sentencas_60k.xlsx` → `data/sentencas_60k.csv`
+- [x] Casos exemplo e mock data preparados para destravar frontend e dashboard
 
-### Sprint 2 — Análise histórica + retrieval semântico (2h)
-- [x] Script `analyze_historical.py` — EDA do CSV de 60k
-- [x] Gerar embeddings dos 60k casos (batch) e persistir em FAISS/pgvector
-- [x] DuckDB views: taxa_vitoria, valor_condenacao_medio por faixa
-- [x] Função `casos_similares(caso, k=50) → list[Case]` via cosine + filtros
-- [x] Função `stats_similares(casos) → {prob_vitoria, custo_medio, percentil_25}`
+### Sprint 1 — Implementação Base do Pipeline (3h) · P1
+- [x] `POST /api/cases` recebe multipart, cria `case` e persiste PDFs em `data/processos_exemplo/case_<id>/`
+- [x] `extractor.py` lê PDFs com `pdfplumber` e monta texto-base por arquivo
+- [x] `llm/client.py` + prompts de extração/features/embedding integrados ao fluxo
+- [x] Persistência inicial do caso analisado no banco, incluindo texto e features
+- [x] **Checkpoint**: 2 casos exemplo processados com arquivos persistidos e resposta consistente
 
-### Sprint 3 — Motor de decisão + judge + valor (3h)
-- [x] `policy/acordos_v1.yaml` inicial
-- [x] `decision_engine.py` — score + ajustes por features ricas + EV sobre similares
-- [x] `value_estimator.py` — percentil sobre similares + ajustes YAML
-- [x] `judge.py` — LLM-as-judge revisa decisão e calibra confiança
-- [x] `justifier.py` — LLM gera justificativa citando casos similares
-- [x] Endpoint `GET /recommendation` orquestra tudo
-- [x] **Checkpoint**: recomendação plausível + judge aprova + justificativa referencia casos similares
+### Sprint 2 — Análise Histórica + Retrieval Semântico (2h) · P2
+- [x] `scripts/analyze_historical.py` faz EDA do histórico de 60k casos
+- [x] `scripts/build_embeddings.py` gera embeddings e persiste `data/embeddings.npy`, `.faiss` e metadata
+- [x] FAISS local + metadata ficam disponíveis para retrieval
+- [x] `casos_similares(...)` e `stats_similares(...)` alimentam o núcleo estatístico com top-K e percentis
+- [x] **Checkpoint**: recomendações já passam a usar similares e estatística histórica
 
-### Sprint 4 — UI do advogado (3h)
-- [x] Inbox de casos
-- [ ] Tela de caso com PDFs + card de recomendação
-- [x] Form de outcome (seguiu/divergiu + resultado)
-- [ ] **Checkpoint**: gravar o vídeo de 2min aqui já é possível
+### Sprint 3 — Motor Estatístico + Judge + Justificativa (3h) · P2
+- [x] `policy/acordos_v1.yaml` versionada e conectada ao motor
+- [x] `decision_engine.py` calcula score, EV, decisão e `regras_aplicadas`
+- [x] `value_estimator.py` sugere faixa com base em histórico + policy
+- [x] `judge.py` e `justifier.py` revisam decisão, calibram confiança e geram justificativa
+- [x] `GET /api/cases/{id}/recommendation` orquestra o pipeline completo
+- [x] `POST /api/cases/{id}/outcome` registra o desfecho do advogado
+- [x] **Checkpoint**: casos exemplo com recomendação plausível, judge e justificativa auditável
 
-### Sprint 5 — Dashboard do banco (2h)
-- [ ] Métricas de aderência (gauge + série temporal)
-- [ ] Métricas de efetividade (economia estimada vs. realizada)
+### Sprint 4 — UI do Advogado (3h) · P3
+- [x] Inbox de casos conectada ao backend
+- [x] Tela do caso com visualização inline de PDFs + card de recomendação
+- [x] Formulário de novo caso alinhado ao fluxo real: upload de PDFs → extração automática
+- [x] `OutcomeForm` registra aderência/divergência e resultado
+- [x] **Checkpoint**: fluxo demo do advogado já é possível (`inbox → caso → recomendação → outcome`)
+
+### Sprint 5 — Dashboard do Banco (2h) · P4
+- [x] Endpoint consolidado `/api/dashboard/metrics` com métricas agregadas reais
+- [x] Dashboard básico com cards de aderência, aceitação e disagreement do judge
+- [ ] Gauge e série temporal
+- [ ] Economia estimada vs. realizada
 - [ ] Filtros por período/escritório
+- [ ] Seed específico para cenários de dashboard
 
-### Sprint 6 — Backtest + polish (2h)
-- [ ] `eval_policy.py` — roda política no histórico de 60k e reporta: economia estimada, casos impactados
-- [ ] Justificativas com LLM mais polidas
-- [ ] Ajustes finais de UX
+### Sprint 6 — Backtest + Polish (2h) · P2 + P3
+- [ ] `eval_policy.py` para backtest no histórico de 60k
+- [ ] Refino final de justificativas/prompts
+- [ ] Polish de UX: responsividade, loading, erros e ajustes finos
 
-### Sprint 7 — Entrega (2h)
-- [ ] Gravar vídeo de 2min (demo pelo olhar do advogado)
+### Sprint 7 — Entrega (2h) · P5
+- [ ] Gravar vídeo de 2min (fluxo: inbox → analisar caso → recommendation → outcome)
 - [ ] Fechar slides da apresentação
 - [ ] README + SETUP finais
 - [ ] Push final no repo + submissão no formulário

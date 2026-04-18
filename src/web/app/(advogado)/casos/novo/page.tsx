@@ -18,7 +18,7 @@ export default function NovoCasoPage() {
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ingestão</p>
         <h1 className="mt-1 text-2xl font-semibold">Cadastrar novo caso</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Envie os autos e os subsídios do banco para criar um novo caso e iniciar a análise automática.
+          Envie os autos e os subsídios em PDF. O backend extrai número do processo, autor, CPF, valor da causa e contexto jurídico a partir dos documentos.
         </p>
       </section>
 

@@ -8,10 +8,6 @@ import { UploadCloud, FileText, X, Loader2, Gavel } from "lucide-react"
 
 export function NewCaseForm() {
   const router = useRouter()
-  const [numeroProcesso, setNumeroProcesso] = useState("")
-  const [valorCausa, setValorCausa] = useState("")
-  const [autorNome, setAutorNome] = useState("")
-  const [autorCpf, setAutorCpf] = useState("")
   const [autosFiles, setAutosFiles] = useState<File[]>([])
   const [subsidiosFiles, setSubsidiosFiles] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
@@ -34,16 +30,10 @@ export function NewCaseForm() {
 
     try {
       const formData = new FormData()
-      if (numeroProcesso.trim()) formData.append("numero_processo", numeroProcesso.trim())
-      if (valorCausa.trim()) formData.append("valor_causa", valorCausa.trim())
-      if (autorNome.trim()) formData.append("autor_nome", autorNome.trim())
-      if (autorCpf.trim()) formData.append("autor_cpf", autorCpf.trim())
-
       autosFiles.forEach((file) => formData.append("autos_files", file))
       subsidiosFiles.forEach((file) => formData.append("subsidios_files", file))
 
       const created = await createCase(formData)
-      // Small artificially visible delay for smoother transition
       setTimeout(() => {
         setLoading(false)
         router.push(`/caso/${created.id}`)
@@ -96,51 +86,42 @@ export function NewCaseForm() {
         <section className="rounded-3xl border border-border/50 bg-background/50 p-8 shadow-xl shadow-black/5 backdrop-blur-xl transition-all hover:bg-background/80">
           <div className="mb-6 border-b border-border/50 pb-4">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Identificação
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Fluxo esperado
             </p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight">Dados do caso</h2>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight">Ingestão orientada por documentos</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Nesta etapa o advogado só envia os PDFs. Número do processo, autor, CPF, valor da causa, alegações
+              e contexto jurídico são extraídos automaticamente dos autos e dos subsídios durante a análise.
+            </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Número do processo</label>
-              <input
-                type="text"
-                value={numeroProcesso}
-                onChange={(e) => setNumeroProcesso(e.target.value)}
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm transition-all focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="0801234-56.2024.8.10.0001"
-              />
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                <UploadCloud className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold">1. Envio dos PDFs</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Separe autos do processo e subsídios do banco para o backend persistir os documentos corretamente.
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valor da causa</label>
-              <input
-                type="number"
-                value={valorCausa}
-                onChange={(e) => setValorCausa(e.target.value)}
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm transition-all focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="15000"
-              />
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+                <FileText className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold">2. Extração automática</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                O pipeline lê os PDFs e preenche os dados do caso sem cadastro manual de número, autor, CPF ou valor.
+              </p>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Autor</label>
-              <input
-                type="text"
-                value={autorNome}
-                onChange={(e) => setAutorNome(e.target.value)}
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm transition-all focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="Maria Aparecida Silva"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPF do autor</label>
-              <input
-                type="text"
-                value={autorCpf}
-                onChange={(e) => setAutorCpf(e.target.value)}
-                className="w-full rounded-xl border border-border/50 bg-background/50 px-4 py-3 text-sm transition-all focus:border-primary/50 focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10"
-                placeholder="123.456.789-00"
-              />
+            <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 shadow-sm">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20 dark:text-blue-400">
+                <Gavel className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold">3. Caso pronto para revisão</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Quando o processamento termina, o sistema já abre o painel do caso com documentos, recomendação e outcome.
+              </p>
             </div>
           </div>
         </section>
@@ -151,6 +132,10 @@ export function NewCaseForm() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Ingestão de Documentos
             </p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight">Upload dos PDFs</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Envie ao menos um PDF de autos ou de subsídios. O backend organiza os arquivos por categoria e inicia a
+              extração assim que o caso é criado.
+            </p>
           </div>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -249,7 +234,7 @@ export function NewCaseForm() {
             size="lg" 
             className="h-14 rounded-2xl px-10 text-base font-semibold tracking-wide shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95 disabled:scale-100"
           >
-            Analisar Contrato e Iniciar I.A.
+            Enviar PDFs e iniciar análise
           </Button>
         </div>
       </form>
