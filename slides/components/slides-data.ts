@@ -24,8 +24,22 @@ export const slides: Slide[] = [
     status: "misto",
   },
   {
+    id: "politica",
+    eyebrow: "02 · Política de acordos",
+    title: "A política de acordos traduz a experiência jurídica em orientação prática.",
+    lead: "Em linguagem simples: o sistema olha a robustez dos documentos, os sinais do caso e a política definida pelo jurídico para recomendar quando vale defender e quando faz mais sentido acordar.",
+    bullets: [
+      "Se a defesa documental do banco é forte, a tendência é recomendar defesa.",
+      "Se há fragilidade probatória ou maior risco jurídico, a tendência é recomendar acordo.",
+      "Quando a recomendação é acordo, o sistema sugere uma faixa de valor coerente com o contexto do caso.",
+      "A decisão vem acompanhada de justificativa e rastreabilidade para facilitar revisão pelo time jurídico.",
+    ],
+    footer: "Para o jurídico, o ponto central é: a política vira critério consistente de decisão, não opinião isolada caso a caso.",
+    status: "misto",
+  },
+  {
     id: "solucao",
-    eyebrow: "02 · Solução",
+    eyebrow: "03 · Solução",
     title: "Uma política de acordos assistida por IA, mas com núcleo auditável.",
     lead: "A plataforma recebe os documentos do caso, estrutura os dados com apoio de LLM e entrega ao advogado uma recomendação objetiva com justificativa e rastreabilidade.",
     bullets: [
@@ -38,8 +52,22 @@ export const slides: Slide[] = [
     status: "misto",
   },
   {
+    id: "financeiro",
+    eyebrow: "04 · Potencial financeiro",
+    title: "O potencial financeiro está em decidir melhor e mais cedo, em escala.",
+    lead: "Mesmo sem prometer um número fechado hoje, a lógica econômica da iniciativa é clara: reduzir custo de análise, diminuir decisões inconsistentes e capturar acordos mais eficientes antes que o caso escale.",
+    bullets: [
+      "Menos tempo gasto pelo advogado em triagem manual de milhares de processos.",
+      "Mais consistência para evitar defesa cara em casos com baixa sustentação documental.",
+      "Melhor orientação para capturar acordos em faixas mais estratégicas e sustentáveis.",
+      "Base para medir aderência, efetividade e impacto econômico ao longo do tempo.",
+    ],
+    footer: "A tese financeira é simples: orientar melhor a carteira jurídica reduz desperdício operacional e melhora a estratégia econômica dos casos.",
+    status: "misto",
+  },
+  {
     id: "fluxo",
-    eyebrow: "03 · Fluxo do produto",
+    eyebrow: "05 · Fluxo do produto",
     title: "Do PDF à recomendação em um ciclo completo.",
     lead: "O valor do projeto não está só em sugerir uma estratégia, mas em fechar o ciclo operacional com decisão humana e métricas.",
     bullets: [
@@ -53,8 +81,22 @@ export const slides: Slide[] = [
     status: "entregue",
   },
   {
+    id: "ux",
+    eyebrow: "06 · Experiência do advogado",
+    title: "A experiência do advogado foi pensada para orientar, priorizar e acelerar a decisão.",
+    lead: "Em vez de começar do zero em cada processo, o advogado recebe uma visão estruturada do caso, com recomendação objetiva, justificativa e espaço para registrar a decisão final.",
+    bullets: [
+      "Entrada simples do caso com documentos e dados principais.",
+      "Visualização do processo com recomendação já pronta para leitura rápida.",
+      "Justificativa e trace para apoiar revisão jurídica com mais segurança.",
+      "Registro do outcome para transformar uso em aprendizado operacional.",
+    ],
+    footer: "A experiência foi desenhada para reduzir atrito na análise e aumentar clareza para o advogado em ambientes de alto volume.",
+    status: "misto",
+  },
+  {
     id: "ia",
-    eyebrow: "04 · Arquitetura e IA",
+    eyebrow: "07 · Arquitetura e solução técnica",
     title: "IA como apoio inteligente, não como decisão opaca.",
     lead: "A arquitetura combina extração com LLM, política explícita, explicação baseada em trace e uma segunda camada de revisão para aumentar confiança e explicabilidade.",
     bullets: [
@@ -68,7 +110,7 @@ export const slides: Slide[] = [
   },
   {
     id: "entregue",
-    eyebrow: "05 · MVP funcional",
+    eyebrow: "08 · MVP funcional",
     title: "O que já foi entregue no repositório atual.",
     lead: "A base funcional do fluxo jurídico já existe no backend e sustenta uma narrativa real de MVP, não apenas de intenção arquitetural.",
     bullets: [
@@ -82,7 +124,7 @@ export const slides: Slide[] = [
   },
   {
     id: "demo",
-    eyebrow: "06 · Demo",
+    eyebrow: "09 · Demo",
     title: "Demo sugerida: do caso recebido à decisão registrada.",
     lead: "A melhor forma de apresentar é mostrar o ciclo completo em vez de isolar apenas a recomendação.",
     bullets: [
@@ -97,7 +139,7 @@ export const slides: Slide[] = [
   },
   {
     id: "diferenciais",
-    eyebrow: "07 · Diferenciais",
+    eyebrow: "10 · Diferenciais",
     title: "Mais do que IA com PDF: governança, rastreabilidade e decisão assistida.",
     lead: "A solução se diferencia por transformar IA em ferramenta operacional com política explícita, rastreamento e espaço para governança jurídica.",
     bullets: [
@@ -112,23 +154,23 @@ export const slides: Slide[] = [
   },
   {
     id: "limitacoes",
-    eyebrow: "08 · Limitações",
+    eyebrow: "11 · Limitações conhecidas",
     title: "MVP honesto: o que ainda é limitação atual.",
     lead: "A apresentação ganha credibilidade quando separa claramente o que já roda do que ainda depende de evolução técnica e produto.",
     bullets: [
-      "OCR e documentos escaneados ainda não são o foco principal do MVP atual.",
-      "Dashboard pode evoluir em profundidade visual e filtros.",
-      "A política atual é uma v1 baseada em heurísticas, sinais e histórico.",
-      "Fluxos de alçada/aprovação e integração com sistemas externos ainda são evolução natural.",
+      "No MVP, o motor de decisão ainda está concentrado na V5 e pode evoluir para versões mais sofisticadas e calibradas.",
+      "A solução hoje depende de IA/LLM externo, especialmente da OpenAI, para partes importantes do fluxo.",
+      "O suporte atual está focado apenas em arquivos PDF dentro do pipeline de ingestão.",
+      "Dashboard pode evoluir em profundidade visual, filtros e governança de uso.",
     ],
-    footer: "Preferimos atacar o coração do problema primeiro e crescer com clareza de roadmap.",
+    footer: "Preferimos atacar o coração do problema primeiro e crescer com clareza de roadmap, robustez técnica e governança.",
     status: "misto",
   },
   {
     id: "visao",
-    eyebrow: "09 · Próximos passos",
-    title: "De assistente jurídico para plataforma de decisão orientada por dados.",
-    lead: "A próxima fase é ampliar governança, medir impacto econômico com mais profundidade e transformar o MVP em vantagem operacional mensurável.",
+    eyebrow: "12 · Próximos passos (1 mês)",
+    title: "Com mais 1 mês de desenvolvimento, o MVP pode ganhar profundidade operacional.",
+    lead: "O caminho mais natural no curto prazo é fortalecer medição de impacto, governança jurídica e capacidade de operação sobre carteiras maiores.",
     bullets: [
       "Backtest mais forte da política no histórico completo.",
       "Dashboard mais robusto, com recortes e impacto econômico.",
@@ -141,7 +183,7 @@ export const slides: Slide[] = [
   },
   {
     id: "expansao",
-    eyebrow: "10 · Escalabilidade e expansão",
+    eyebrow: "13 · Escalabilidade e expansão",
     title: "Nos próximos meses, a plataforma pode evoluir de recomendação para orquestração estratégica.",
     lead: "A base construída permite expandir o projeto para uma camada conversacional e proativa, capaz de cruzar dados, sugerir a melhor estratégia e avisar o jurídico no momento certo.",
     bullets: [
