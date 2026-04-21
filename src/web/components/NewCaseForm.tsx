@@ -162,7 +162,7 @@ export function NewCaseForm() {
               {autosFiles.length > 0 && (
                 <div className="mt-2 flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                   {autosFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3 text-sm shadow-sm animate-in zoom-in-95 duration-200">
+                    <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3 text-sm shadow-sm animate-in zoom-in-95 duration-200">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <FileText className="h-4 w-4 shrink-0 text-emerald-500" />
                         <span className="truncate font-medium text-muted-foreground">{file.name}</span>
@@ -202,7 +202,7 @@ export function NewCaseForm() {
               {subsidiosFiles.length > 0 && (
                 <div className="mt-2 flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
                   {subsidiosFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3 text-sm shadow-sm animate-in zoom-in-95 duration-200">
+                    <div key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between rounded-xl border border-border/50 bg-background p-3 text-sm shadow-sm animate-in zoom-in-95 duration-200">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <FileText className="h-4 w-4 shrink-0 text-primary" />
                         <span className="truncate font-medium text-muted-foreground">{file.name}</span>

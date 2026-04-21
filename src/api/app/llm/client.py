@@ -34,6 +34,10 @@ def get_openai_client() -> OpenAI | None:
     return OpenAI(api_key=api_key)
 
 
+def has_active_openai_credentials() -> bool:
+    return get_openai_client() is not None
+
+
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 BRAZILIAN_UFS = {
     "AC",

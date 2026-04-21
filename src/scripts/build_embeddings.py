@@ -25,6 +25,7 @@ from app.analytics.semantic import (  # noqa: E402
     normalize_embedding_array,
 )
 from app.core.config import get_settings  # noqa: E402
+from app.llm.client import has_active_openai_credentials  # noqa: E402
 
 CSV_PATH = ROOT_DIR / "data" / "sentencas_60k.csv"
 OUTPUT_DIR = ROOT_DIR / "data"
@@ -70,13 +71,13 @@ def _batched(items: list[str], batch_size: int) -> Iterable[list[str]]:
 def _resolve_provider(requested_provider: str) -> tuple[str, str]:
     settings = get_settings()
     if requested_provider == "openai":
-        if not settings.openai_api_key:
-            raise RuntimeError("OPENAI_API_KEY ausente para provider openai.")
+        if not has_active_openai_credentials():
+            raise RuntimeError("OPENAI_API_KEY ausente ou inválida para provider openai.")
         return "openai", settings.embedding_model
     if requested_provider == "local":
         return "local", LOCAL_EMBEDDING_MODEL
 
-    if settings.openai_api_key:
+    if has_active_openai_credentials():
         return "openai", settings.embedding_model
     return "local", LOCAL_EMBEDDING_MODEL
 

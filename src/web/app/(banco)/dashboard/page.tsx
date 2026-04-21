@@ -243,13 +243,13 @@ function PieChart({ data }: { data: ResultadoMicroItem[] }) {
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6">
       <svg viewBox="0 0 180 180" className="w-44 h-44 shrink-0">
-        {slices.map((s) => (
-          <path key={s.resultado_micro} d={s.path} fill={s.color} stroke="white" strokeWidth={1} />
+        {slices.map((s, index) => (
+          <path key={`${s.resultado_micro}-${index}`} d={s.path} fill={s.color} stroke="white" strokeWidth={1} />
         ))}
       </svg>
       <div className="space-y-2">
-        {slices.map((s) => (
-          <div key={s.resultado_micro} className="flex items-center gap-2 text-sm">
+        {slices.map((s, index) => (
+          <div key={`${s.resultado_micro}-${index}`} className="flex items-center gap-2 text-sm">
             <span className="w-3 h-3 rounded-full shrink-0" style={{ background: s.color }} />
             <span className="text-muted-foreground">{LABEL_MAP[s.resultado_micro] ?? s.resultado_micro}</span>
             <span className="font-semibold ml-auto pl-4">
@@ -305,7 +305,7 @@ function SuccessMatrix({ data }: { data: MatrixCell[] }) {
                 const cs = cell ? cellStyle(cell.taxa_sucesso) : { background: "#161e2e", color: "#374151" }
                 return (
                   <td
-                    key={u}
+                    key={`${qtd}-${u}`}
                     className="border border-border/30 px-3 py-2 text-center text-sm"
                     style={cs}
                   >

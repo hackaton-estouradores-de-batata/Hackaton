@@ -132,8 +132,8 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentos considerados</p>
                 <div className="flex flex-wrap gap-2">
-                  {trace.documentos_presentes.map((documento) => (
-                    <Badge key={documento} variant="outline" className="bg-background/50 text-xs font-medium border-primary/20 text-foreground">
+                  {trace.documentos_presentes.map((documento, index) => (
+                    <Badge key={`${documento}-${index}`} variant="outline" className="bg-background/50 text-xs font-medium border-primary/20 text-foreground">
                       {formatDocumentLabel(documento)}
                     </Badge>
                   ))}
@@ -159,8 +159,8 @@ export function RecommendationCard({ rec }: { rec: Recommendation }) {
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Regras Aplicadas</p>
             <div className="flex flex-wrap gap-2">
-              {rec.regras_aplicadas.map((r) => (
-                <Badge key={r} variant="outline" className="bg-background/50 text-xs font-medium border-primary/20 text-foreground">
+              {rec.regras_aplicadas.map((r, index) => (
+                <Badge key={`${r}-${index}`} variant="outline" className="bg-background/50 text-xs font-medium border-primary/20 text-foreground">
                   {formatAppliedRuleLabel(r)}
                 </Badge>
               ))}

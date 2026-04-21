@@ -71,7 +71,7 @@ export function CaseViewer({ caso }: { caso: Case }) {
             <div>
               <p className="text-xs text-muted-foreground mb-1">Alegações</p>
               <ul className="space-y-1">
-                {caso.alegacoes.map((a) => <li key={a}>• {a}</li>)}
+                {caso.alegacoes.map((a, index) => <li key={`${a}-${index}`}>• {a}</li>)}
               </ul>
             </div>
           </>
@@ -81,8 +81,8 @@ export function CaseViewer({ caso }: { caso: Case }) {
           <div>
             <p className="text-xs text-muted-foreground mb-1">Pedidos</p>
             <div className="flex flex-wrap gap-1">
-              {caso.pedidos.map((p) => (
-                <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
+              {caso.pedidos.map((p, index) => (
+                <Badge key={`${p}-${index}`} variant="outline" className="text-xs">{p}</Badge>
               ))}
             </div>
           </div>
@@ -94,8 +94,8 @@ export function CaseViewer({ caso }: { caso: Case }) {
               <AlertTriangle className="h-3 w-3 text-yellow-600" />
               <p className="text-xs font-medium text-yellow-700 dark:text-yellow-400">Red flags</p>
             </div>
-            {caso.red_flags.map((f) => (
-              <p key={f} className="text-xs text-yellow-700 dark:text-yellow-400">
+            {caso.red_flags.map((f, index) => (
+              <p key={`${f}-${index}`} className="text-xs text-yellow-700 dark:text-yellow-400">
                 {formatTechnicalLabel(f)}
               </p>
             ))}
@@ -110,8 +110,8 @@ export function CaseViewer({ caso }: { caso: Case }) {
           <div>
             <p className="mb-1 text-xs text-muted-foreground">Inconsistências temporais</p>
             <ul className="space-y-1">
-              {caso.inconsistencias_temporais.map((item) => (
-                <li key={item} className="rounded bg-muted px-2 py-1 text-xs">
+              {caso.inconsistencias_temporais.map((item, index) => (
+                <li key={`${item}-${index}`} className="rounded bg-muted px-2 py-1 text-xs">
                   {formatTechnicalLabel(item)}
                 </li>
               ))}
